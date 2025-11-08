@@ -1,0 +1,1 @@
+// Entry log operations
