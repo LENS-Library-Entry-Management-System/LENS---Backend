@@ -1,0 +1,1 @@
+// MQTT/WebSocket config for hardware
