@@ -64,7 +64,7 @@ LENS (Library Entry Notation System) modernizes library access management by aut
       <a href="https://github.com/Marie">
         <img src="https://github.com/Marie.png" width="100px;" alt="Marie"/>
         <br />
-        <sub><b>Marie</b></sub>
+        <sub><b>piaamarie</b></sub>
       </a>
     </td>
   </tr>
