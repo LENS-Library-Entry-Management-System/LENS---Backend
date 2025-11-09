@@ -86,7 +86,7 @@ LENS (Library Entry Notation System) modernizes library access management by aut
 git clone https://github.com/6reenhorn/LENS---Backend.git
 
 # Install dependencies
-[]
+[npm i]
 
 # Configure database connection
 []
