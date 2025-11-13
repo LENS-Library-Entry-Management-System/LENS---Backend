@@ -1,20 +1,84 @@
-import "dotenv/config";
-import app from "./rfid-entry-backend/src/app";
-import connectDB from "./rfid-entry-backend/src/config/database";
-import logger from "./rfid-entry-backend/src/utils/logger";
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import { testConnection } from './rfid-entry-backend/src/config/database';
+import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
+import authRoutes from './rfid-entry-backend/src/routes/authRoutes';
 
+dotenv.config();
+
+const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to database
-connectDB();
+// Middleware
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true,
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const server = app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
 });
 
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err) => {
-  logger.error("Unhandled Rejection:", err);
-  server.close(() => process.exit(1));
+// Routes
+app.use('/api/auth', authRoutes);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'LENS Backend is running',
+    database: 'PostgreSQL',
+    timestamp: new Date().toISOString()
+  });
 });
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found',
+    path: req.originalUrl,
+  });
+});
+
+// Error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  });
+});
+
+// Start server
+const startServer = async () => {
+  try {
+    // Test PostgreSQL connection
+    await testConnection();
+    
+    app.listen(PORT, () => {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`🚀 LENS Backend Server Running`);
+      console.log(`📍 Port: ${PORT}`);
+      console.log(`🗄️  Database: PostgreSQL`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 API: http://localhost:${PORT}`);
+      console.log(`💚 Health: http://localhost:${PORT}/health`);
+      console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+export default app;
