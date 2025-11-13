@@ -30,6 +30,7 @@
     "dist",
     "rfid-entry-backend/node_modules",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "rfid-entry-backend/scripts/**/*.ts"
   ]
 }
