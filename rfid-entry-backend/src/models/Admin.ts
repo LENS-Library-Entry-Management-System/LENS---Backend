@@ -14,7 +14,7 @@ interface AdminAttributes {
   updatedAt: Date;
 }
 
-// ✅ FIX: Make passwordHash optional in creation
+// Make passwordHash optional in creation
 interface AdminCreationAttributes extends Optional<AdminAttributes, 'adminId' | 'lastLogin' | 'createdAt' | 'updatedAt'> {
   passwordHash: string; // Required for creation
 }
