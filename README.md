@@ -362,6 +362,12 @@ LENS---Backend/
 
 ---
 
+## Contributing
+
+New contributors should review the detailed workflow, tooling, and review expectations in [`AGENTS.md`](AGENTS.md). Follow that guide before opening a PR so your branch naming, lint/test checks, and database scripts align with team standards.
+
+---
+
 ## Default Credentials (Development Only)
 
 After running `npm run seed:admin`:
