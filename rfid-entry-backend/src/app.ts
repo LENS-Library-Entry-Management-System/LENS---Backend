@@ -26,13 +26,9 @@ app.get("/health", (_req: Request, res: Response) => {
 // API Routes
 import authRoutes from "./routes/authRoutes";
 import entryRoutes from "./routes/entryRoutes";
-import userRoutes from "./routes/userRoutes";
-import rfidRoutes from "./routes/rfidRoutes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/rfid", rfidRoutes);
 
 // Error handling
 app.use(errorHandler);

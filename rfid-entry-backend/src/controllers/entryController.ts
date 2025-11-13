@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
 import EntryLog from '../models/EntryLog';
 import User from '../models/User';
 import { logAuditAction } from '../services/auditService';
 
 // GET /api/entries - List all entries (paginated)
-export const getAllEntries = async (req: Request, res: Response) => {
+export const getAllEntries = async (req: Request, res: Response): Promise<void> => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -36,6 +36,7 @@ export const getAllEntries = async (req: Request, res: Response) => {
         },
       },
     });
+    return;
   } catch (error) {
     console.error('Get all entries error:', error);
     res.status(500).json({
@@ -43,11 +44,12 @@ export const getAllEntries = async (req: Request, res: Response) => {
       message: 'Failed to fetch entries',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };
 
 // GET /api/entries/:id - Get specific entry
-export const getEntryById = async (req: Request, res: Response) => {
+export const getEntryById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -61,16 +63,18 @@ export const getEntryById = async (req: Request, res: Response) => {
     });
 
     if (!entry) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Entry not found',
       });
+      return;
     }
 
     res.json({
       success: true,
       data: entry,
     });
+    return;
   } catch (error) {
     console.error('Get entry by ID error:', error);
     res.status(500).json({
@@ -78,17 +82,19 @@ export const getEntryById = async (req: Request, res: Response) => {
       message: 'Failed to fetch entry',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };
 
 // PUT /api/entries/:id - Update entry
-export const updateEntry = async (req: Request, res: Response) => {
+export const updateEntry = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const { id } = req.params;
@@ -97,10 +103,11 @@ export const updateEntry = async (req: Request, res: Response) => {
     const entry = await EntryLog.findByPk(id);
 
     if (!entry) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Entry not found',
       });
+      return;
     }
 
     const oldValues = {
@@ -137,6 +144,7 @@ export const updateEntry = async (req: Request, res: Response) => {
       message: 'Entry updated successfully',
       data: entry,
     });
+    return;
   } catch (error) {
     console.error('Update entry error:', error);
     res.status(500).json({
@@ -144,17 +152,19 @@ export const updateEntry = async (req: Request, res: Response) => {
       message: 'Failed to update entry',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };
 
 // DELETE /api/entries/:id - Delete entry
-export const deleteEntry = async (req: Request, res: Response) => {
+export const deleteEntry = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const { id } = req.params;
@@ -162,10 +172,11 @@ export const deleteEntry = async (req: Request, res: Response) => {
     const entry = await EntryLog.findByPk(id);
 
     if (!entry) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Entry not found',
       });
+      return;
     }
 
     await entry.destroy();
@@ -190,6 +201,7 @@ export const deleteEntry = async (req: Request, res: Response) => {
       success: true,
       message: 'Entry deleted successfully',
     });
+    return;
   } catch (error) {
     console.error('Delete entry error:', error);
     res.status(500).json({
@@ -197,11 +209,12 @@ export const deleteEntry = async (req: Request, res: Response) => {
       message: 'Failed to delete entry',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };
 
 // GET /api/entries/active - Real-time monitoring (FR-09)
-export const getActiveEntries = async (req: Request, res: Response) => {
+export const getActiveEntries = async (_req: Request, res: Response): Promise<void> => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -241,6 +254,7 @@ export const getActiveEntries = async (req: Request, res: Response) => {
         stats,
       },
     });
+    return;
   } catch (error) {
     console.error('Get active entries error:', error);
     res.status(500).json({
@@ -248,16 +262,18 @@ export const getActiveEntries = async (req: Request, res: Response) => {
       message: 'Failed to fetch active entries',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };
 
 // POST /api/entries/filter - Filter/search (FR-10)
-export const filterEntries = async (req: Request, res: Response) => {
+export const filterEntries = async (req: Request, res: Response): Promise<void> => {
   try {
     const { college, department, userType, startDate, endDate, searchQuery, page = 1, limit = 50 } = req.body;
 
-    const where: any = {};
-    const userWhere: any = {};
+    const where: WhereOptions = {};
+    // Allow symbol-indexed keys (e.g. Op.or) on the userWhere object
+    const userWhere: WhereOptions & { [k: symbol]: unknown } = {};
 
     // Filter by date range
     if (startDate || endDate) {
@@ -277,6 +293,7 @@ export const filterEntries = async (req: Request, res: Response) => {
 
     // Search by name or ID number
     if (searchQuery) {
+      // Use a symbol index on userWhere (typed above) so TypeScript accepts Op.or
       userWhere[Op.or] = [
         { firstName: { [Op.iLike]: `%${searchQuery}%` } },
         { lastName: { [Op.iLike]: `%${searchQuery}%` } },
@@ -313,6 +330,7 @@ export const filterEntries = async (req: Request, res: Response) => {
         },
       },
     });
+    return;
   } catch (error) {
     console.error('Filter entries error:', error);
     res.status(500).json({
@@ -320,22 +338,24 @@ export const filterEntries = async (req: Request, res: Response) => {
       message: 'Failed to filter entries',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };
 
 // GET /api/entries/export - Export entries (CSV/PDF)
-export const exportEntries = async (req: Request, res: Response) => {
+export const exportEntries = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const { format = 'csv', startDate, endDate } = req.query;
 
-    const where: any = {};
+    const where: WhereOptions = {};
 
     if (startDate || endDate) {
       where.entryTimestamp = {};
@@ -396,6 +416,7 @@ export const exportEntries = async (req: Request, res: Response) => {
         message: 'Invalid export format. Use "csv".',
       });
     }
+    return;
   } catch (error) {
     console.error('Export entries error:', error);
     res.status(500).json({
@@ -403,5 +424,6 @@ export const exportEntries = async (req: Request, res: Response) => {
       message: 'Failed to export entries',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+    return;
   }
 };

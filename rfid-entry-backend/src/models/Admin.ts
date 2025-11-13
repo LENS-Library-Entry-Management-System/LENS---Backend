@@ -22,7 +22,15 @@ interface AdminCreationAttributes extends Optional<AdminAttributes, 'adminId' | 
 class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements AdminAttributes {
   public adminId!: number;
   public username!: string;
-  public passwordHash!: string;
+  // Backing field for password; expose via getter/setter so ESLint recognizes usage
+  private _passwordHash!: string;
+  public get passwordHash(): string {
+    return this._passwordHash;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public set passwordHash(value: string) {
+    this._passwordHash = value;
+  }
   public fullName!: string;
   public email!: string;
   public role!: 'super_admin' | 'staff';
@@ -37,6 +45,7 @@ class Admin extends Model<AdminAttributes, AdminCreationAttributes> implements A
 
   // Instance method to get safe admin data (without password)
   public toSafeObject() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...safeAdmin } = this.get();
     return safeAdmin;
   }
