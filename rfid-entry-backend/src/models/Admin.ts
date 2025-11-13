@@ -104,12 +104,14 @@ Admin.init(
       beforeCreate: async (admin: Admin) => {
         if (admin.passwordHash) {
           // ✅ Using bcryptjs
+          // eslint-disable-next-line no-param-reassign
           admin.passwordHash = await bcrypt.hash(admin.passwordHash, 10);
         }
       },
       beforeUpdate: async (admin: Admin) => {
         if (admin.changed('passwordHash')) {
           // ✅ Using bcryptjs
+          // eslint-disable-next-line no-param-reassign
           admin.passwordHash = await bcrypt.hash(admin.passwordHash, 10);
         }
       },

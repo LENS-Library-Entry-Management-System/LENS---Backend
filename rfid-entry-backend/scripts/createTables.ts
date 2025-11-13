@@ -15,7 +15,7 @@ const createTables = async () => {
   const client = await pool.connect();
   
   try {
-    console.log('🚀 Creating PostgreSQL tables...');
+    console.log('Creating PostgreSQL tables...');
 
     // Create ENUM types
     await client.query(`
@@ -92,15 +92,15 @@ const createTables = async () => {
       EXECUTE FUNCTION update_updated_at_column();
     `);
 
-    console.log('✅ All tables created successfully!');
+    console.log('All tables created successfully!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📋 Tables created:');
+    console.log('Tables created:');
     console.log('   - admins');
     console.log('   - audit_logs');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
   } catch (error) {
-    console.error('❌ Error creating tables:', error);
+    console.error('Error creating tables:', error);
     throw error;
   } finally {
     client.release();

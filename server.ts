@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { testConnection } from './rfid-entry-backend/src/config/database';
-import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
+// import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
 import authRoutes from './rfid-entry-backend/src/routes/authRoutes';
 
 dotenv.config();
@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging middleware
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'LENS Backend is running',
@@ -47,7 +47,7 @@ app.use('*', (req, res) => {
 });
 
 // Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error & { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
     success: false,
@@ -64,13 +64,13 @@ const startServer = async () => {
     
     app.listen(PORT, () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`🚀 LENS Backend Server Running`);
-      console.log(`📍 Port: ${PORT}`);
-      console.log(`🗄️  Database: PostgreSQL`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 API: http://localhost:${PORT}`);
-      console.log(`💚 Health: http://localhost:${PORT}/health`);
-      console.log(`🔐 Auth API: http://localhost:${PORT}/api/auth`);
+      console.log(`LENS Backend Server Running`);
+      console.log(`Port: ${PORT}`);
+      console.log(`Database: PostgreSQL`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`API: http://localhost:${PORT}`);
+      console.log(`Health: http://localhost:${PORT}/health`);
+      console.log(`Auth API: http://localhost:${PORT}/api/auth`);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
   } catch (error) {

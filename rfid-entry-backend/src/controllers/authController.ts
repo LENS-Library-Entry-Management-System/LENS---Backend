@@ -3,33 +3,36 @@ import Admin from '../models/Admin';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { logAuditAction } from '../services/auditService';
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Username and password are required',
       });
+      return;
     }
 
     const admin = await Admin.findOne({ where: { username } });
 
     if (!admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
+      return;
     }
 
     const isPasswordValid = await admin.comparePassword(password);
 
     if (!isPasswordValid) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
+      return;
     }
 
     admin.lastLogin = new Date();
@@ -70,13 +73,14 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     await logAuditAction({
@@ -100,22 +104,24 @@ export const logout = async (req: Request, res: Response) => {
   }
 };
 
-export const getProfile = async (req: Request, res: Response) => {
+export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const admin = await Admin.findByPk(req.admin.adminId);
 
     if (!admin) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Admin not found',
       });
+      return;
     }
 
     res.json({
@@ -132,13 +138,14 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const { fullName, email, currentPassword, newPassword } = req.body;
@@ -146,10 +153,11 @@ export const updateProfile = async (req: Request, res: Response) => {
     const admin = await Admin.findByPk(req.admin.adminId);
 
     if (!admin) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Admin not found',
       });
+      return;
     }
 
     const oldValues = {
@@ -162,18 +170,20 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     if (newPassword) {
       if (!currentPassword) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Current password is required to change password',
         });
+        return;
       }
 
       const isPasswordValid = await admin.comparePassword(currentPassword);
       if (!isPasswordValid) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           message: 'Current password is incorrect',
         });
+        return;
       }
 
       admin.passwordHash = newPassword;
@@ -212,15 +222,16 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const refreshToken = async (req: Request, res: Response) => {
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
   try {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Refresh token is required',
       });
+      return;
     }
 
     const decoded = verifyRefreshToken(refreshToken);
@@ -228,10 +239,11 @@ export const refreshToken = async (req: Request, res: Response) => {
     const admin = await Admin.findByPk(decoded.adminId);
 
     if (!admin) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Admin not found',
       });
+      return;
     }
 
     const payload = {
@@ -254,16 +266,18 @@ export const refreshToken = async (req: Request, res: Response) => {
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === 'TokenExpiredError') {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           message: 'Refresh token expired',
         });
+        return;
       }
       if (error.name === 'JsonWebTokenError') {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           message: 'Invalid refresh token',
         });
+        return;
       }
     }
     console.error('Refresh token error:', error);

@@ -5,7 +5,7 @@ import { testConnection } from '../src/config/database';
 
 dotenv.config();
 
-console.log('🔍 DEBUG - Database Config:');
+console.log('DEBUG - Database Config:');
 console.log('DB_HOST:', process.env.DB_HOST);
 console.log('DB_PORT:', process.env.DB_PORT);
 console.log('DB_NAME:', process.env.DB_NAME);
@@ -15,7 +15,7 @@ console.log('---');
 
 const seedAdmin = async () => {
   try {
-    console.log('🌱 Starting admin seeder...');
+    console.log('Starting admin seeder...');
 
     await testConnection();
 
@@ -28,7 +28,7 @@ const seedAdmin = async () => {
     });
 
     if (existingAdmin) {
-      console.log('⚠️  Admin user already exists!');
+      console.log('Admin user already exists!');
       console.log('Username: admin');
       process.exit(0);
     }
@@ -42,14 +42,14 @@ const seedAdmin = async () => {
       role: 'super_admin',
     });
 
-    console.log('✅ Super Admin created successfully!');
+    console.log('Super Admin created successfully!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📋 Login Credentials:');
+    console.log('Login Credentials:');
     console.log('   Username: admin');
     console.log('   Password: password');
     console.log('   Role: super_admin');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('⚠️  IMPORTANT: Change this password in production!');
+    console.log('IMPORTANT: Change this password in production!');
 
     // Create staff user
     await Admin.create({
@@ -60,9 +60,9 @@ const seedAdmin = async () => {
       role: 'staff',
     });
 
-    console.log('✅ Staff user created successfully!');
+    console.log('Staff user created successfully!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📋 Login Credentials:');
+    console.log('Login Credentials:');
     console.log('   Username: staff');
     console.log('   Password: password123');
     console.log('   Role: staff');
@@ -70,7 +70,7 @@ const seedAdmin = async () => {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seeder error:', error);
+    console.error('Seeder error:', error);
     process.exit(1);
   }
 };

@@ -1,6 +1,6 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
-// ✅ FIX: Ensure secrets are strings, not undefined
+// Secrets are strings, not undefined
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET as string;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
