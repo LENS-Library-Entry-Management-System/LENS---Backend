@@ -1,7 +1,7 @@
-require('dotenv').config();
-const app = require('./src/app');
-const connectDB = require('./src/config/database');
-const logger = require('./src/utils/logger');
+import "dotenv/config";
+import app from "./rfid-entry-backend/src/app";
+import connectDB from "./rfid-entry-backend/src/config/database";
+import logger from "./rfid-entry-backend/src/utils/logger";
 
 const PORT = process.env.PORT || 5000;
 
@@ -14,7 +14,7 @@ const server = app.listen(PORT, () => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  logger.error('Unhandled Rejection:', err);
+process.on("unhandledRejection", (err) => {
+  logger.error("Unhandled Rejection:", err);
   server.close(() => process.exit(1));
 });
