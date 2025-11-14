@@ -6,10 +6,6 @@ import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import publicRoutes from "./routes/publicRoutes";
 
-// API Routes imports
-import authRoutes from "./routes/authRoutes";
-import entryRoutes from "./routes/entryRoutes";
-import analyticsRoutes from "./routes/analyticsRoutes";
 
 const app = express();
 
@@ -30,9 +26,17 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 // API Routes
+import analyticsRoutes from "./routes/analyticsRoutes";
+import authRoutes from "./routes/authRoutes";
+import entryRoutes from "./routes/entryRoutes";
+import userRoutes from "./routes/userRoutes";
+
 app.use("/api", analyticsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
+// Mount authenticated user routes before public routes so '/api/users/search' is handled
+// by the protected `userRoutes` instead of the public `/users/:id` handler.
+app.use("/api/users", userRoutes);
 app.use("/api", publicRoutes);
 
 // Error handling
