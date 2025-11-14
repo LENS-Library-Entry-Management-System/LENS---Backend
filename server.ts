@@ -5,6 +5,7 @@ import { testConnection } from './rfid-entry-backend/src/config/database';
 // import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
 import authRoutes from './rfid-entry-backend/src/routes/authRoutes';
 import EntryRoutes from './rfid-entry-backend/src/routes/entryRoutes'
+import publicRoutes from './rfid-entry-backend/src/routes/publicRoutes';
 
 dotenv.config();
 
@@ -24,6 +25,9 @@ app.use((req, _res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// Public routes (no auth required)
+app.use('/api', publicRoutes);
 
 // Routes
 app.use('/api/auth', authRoutes);
