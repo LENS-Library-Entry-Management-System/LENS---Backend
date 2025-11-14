@@ -92,6 +92,7 @@ const startServer = async () => {
       console.log(`API: http://localhost:${PORT}`);
       console.log(`Health: http://localhost:${PORT}/health`);
       console.log(`Auth API: http://localhost:${PORT}/api/auth`);
+      console.log(`Reports API: http://localhost:${PORT}/api/reports`);
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
   } catch (error) {

@@ -12,11 +12,14 @@ LENS (Library Entry Notation System) modernizes library access management by aut
 
 ### Key Features
 
-- Automated ID scanning and validation
-- Real-time entry logging
-- Secure record storage and retrieval
-- User management for students and faculty
-- Self-hosted SQL database for complete data control
+- **Automated ID Scanning**: RFID-based entry logging with duplicate detection
+- **Real-time Entry Monitoring**: Live tracking of library entries
+- **Secure Authentication**: JWT-based admin authentication with role-based access control
+- **User Management**: Comprehensive student and faculty record management
+- **Audit Logging**: Complete trail of all administrative actions
+- **Data Export**: CSV export functionality for reporting
+- **MQTT Integration**: Hardware integration support for RFID scanners
+- **Self-hosted Database**: Complete data control with PostgreSQL
 
 ---
 
@@ -30,50 +33,6 @@ LENS (Library Entry Notation System) modernizes library access management by aut
 - **Authentication**: JWT (JSON Web Tokens)
 - **Password Hashing**: bcryptjs
 - **Other**: MQTT for hardware integration, CORS enabled
-
----
-
-## Team Members
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/DnJstr">
-        <img src="https://github.com/DnJstr.png" width="100px;" alt="DnJstr"/>
-        <br />
-        <sub><b>DnJstr</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/Gshadow2005">
-        <img src="https://github.com/Gshadow2005.png" width="100px;" alt="Gshadow2005"/>
-        <br />
-        <sub><b>Gshadow2005</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/6reenhorn">
-        <img src="https://github.com/6reenhorn.png" width="100px;" alt="6reenhorn"/>
-        <br />
-        <sub><b>6reenhorn (_Nu1L)</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/KokoMinaj">
-        <img src="https://github.com/KokoMinaj.png" width="100px;" alt="KokoMinaj"/>
-        <br />
-        <sub><b>KokoMinaj</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/piaamarie">
-        <img src="https://github.com/piaamarie.png" width="100px;" alt="piaamarie"/>
-        <br />
-        <sub><b>Marie</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
 
 ---
 
@@ -165,7 +124,7 @@ npm run seed:admin
 
 ---
 
-## API Endpoints
+## API Documentation
 
 ### Base URL
 ```
@@ -178,19 +137,23 @@ GET /health
 ```
 Returns server status and database connection info.
 
-### Authentication Endpoints
+---
 
-#### Login
-```
-POST /auth/login
-Content-Type: application/json
+## Authentication Endpoints
 
+### POST /auth/login
+**Description**: Admin login with username and password
+
+**Request Body**:
+```json
 {
   "username": "admin",
   "password": "password"
 }
+```
 
-Response:
+**Response** (200 OK):
+```json
 {
   "success": true,
   "message": "Login successful",
@@ -202,50 +165,66 @@ Response:
       "email": "admin@ustp.edu.ph",
       "role": "super_admin"
     },
-    "accessToken": "eyJhbGc...",
-    "refreshToken": "eyJhbGc..."
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
 ```
 
-#### Logout
-```
-POST /auth/logout
-Authorization: Bearer <accessToken>
+---
 
-Response:
+### POST /auth/logout
+**Description**: Logout current admin session
+
+**Headers**:
+```
+Authorization: Bearer <accessToken>
+```
+
+**Response** (200 OK):
+```json
 {
   "success": true,
   "message": "Logout successful"
 }
 ```
 
-#### Refresh Token
-```
-POST /auth/refresh
-Content-Type: application/json
+---
 
+### POST /auth/refresh
+**Description**: Refresh access token using refresh token
+
+**Request Body**:
+```json
 {
-  "refreshToken": "eyJhbGc..."
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
+```
 
-Response:
+**Response** (200 OK):
+```json
 {
   "success": true,
   "message": "Token refreshed successfully",
   "data": {
-    "accessToken": "eyJhbGc...",
-    "refreshToken": "eyJhbGc..."
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
 ```
 
-#### Get Profile
-```
-GET /auth/profile
-Authorization: Bearer <accessToken>
+---
 
-Response:
+### GET /auth/profile
+**Description**: Get current admin profile
+
+**Headers**:
+```
+Authorization: Bearer <accessToken>
+```
+
+**Response** (200 OK):
+```json
 {
   "success": true,
   "data": {
@@ -259,20 +238,28 @@ Response:
 }
 ```
 
-#### Update Profile
-```
-PUT /auth/profile
-Authorization: Bearer <accessToken>
-Content-Type: application/json
+---
 
+### PUT /auth/profile
+**Description**: Update admin profile information
+
+**Headers**:
+```
+Authorization: Bearer <accessToken>
+```
+
+**Request Body**:
+```json
 {
   "fullName": "New Name",
   "email": "newemail@ustp.edu.ph",
   "currentPassword": "password",
-  "newPassword": "newpassword123"  // optional
+  "newPassword": "newpassword123"
 }
+```
 
-Response:
+**Response** (200 OK):
+```json
 {
   "success": true,
   "message": "Profile updated successfully",
@@ -286,18 +273,189 @@ Response:
 }
 ```
 
-### Entry Management Endpoints
+---
 
-#### Get All Entries
+## Public Endpoints (No Authentication Required)
+
+### POST /entries/scan
+**Description**: Record RFID scan entry with automatic duplicate detection (5-minute window)
+
+**Request Body**:
+```json
+{
+  "rfidTag": "RFID001"
+}
 ```
-GET /entries?page=1&limit=50
-Authorization: Bearer <accessToken>
 
-Response:
+**Response** (200 OK - Success):
+```json
+{
+  "success": true,
+  "message": "Entry recorded successfully",
+  "data": {
+    "entry": {
+      "logId": 6,
+      "userId": 1,
+      "entryTimestamp": "2025-11-14T10:30:00Z",
+      "entryMethod": "rfid",
+      "status": "success"
+    },
+    "user": {
+      "idNumber": "2021-0001",
+      "fullName": "Juan Dela Cruz",
+      "userType": "student",
+      "college": "CCS",
+      "department": "Computer Science"
+    }
+  }
+}
+```
+
+**Response** (200 OK - Duplicate):
+```json
+{
+  "success": false,
+  "message": "Duplicate entry detected",
+  "status": "duplicate",
+  "user": {
+    "idNumber": "2021-0001",
+    "fullName": "Juan Dela Cruz"
+  },
+  "lastEntry": "2025-11-14T10:28:00Z"
+}
+```
+
+**Response** (404 Not Found):
+```json
+{
+  "success": false,
+  "message": "RFID tag not found or user is inactive"
+}
+```
+
+---
+
+### POST /entries/manual
+**Description**: Record manual ID number entry
+
+**Request Body**:
+```json
+{
+  "idNumber": "2021-0002"
+}
+```
+
+**Response**: Same structure as `/entries/scan`
+
+---
+
+### GET /entries/validate/:rfid
+**Description**: Pre-validate RFID tag before scanning (checks for duplicates)
+
+**Parameters**:
+- `rfid` (path): RFID tag to validate
+
+**Example**: `GET /entries/validate/RFID001`
+
+**Response** (200 OK):
+```json
 {
   "success": true,
   "data": {
-    "entries": [...],
+    "user": {
+      "idNumber": "2021-0001",
+      "fullName": "Juan Dela Cruz",
+      "userType": "student",
+      "status": "active"
+    },
+    "isDuplicate": false,
+    "lastEntry": null
+  }
+}
+```
+
+**Response** (Duplicate Detected):
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "idNumber": "2021-0001",
+      "fullName": "Juan Dela Cruz"
+    },
+    "isDuplicate": true,
+    "lastEntry": "2025-11-14T10:28:00Z"
+  }
+}
+```
+
+---
+
+### GET /users/:id
+**Description**: Retrieve user information by ID number or RFID tag
+
+**Parameters**:
+- `id` (path): ID number (e.g., "2021-0001") or RFID tag (e.g., "RFID001")
+
+**Example**: `GET /users/2021-0001` or `GET /users/RFID001`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "idNumber": "2021-0001",
+    "rfidTag": "RFID001",
+    "fullName": "Juan Dela Cruz",
+    "email": "juan.delacruz@ustp.edu.ph",
+    "userType": "student",
+    "college": "CCS",
+    "department": "Computer Science",
+    "yearLevel": "4",
+    "status": "active",
+    "createdAt": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+---
+
+## Entry Management Endpoints (Protected)
+
+All endpoints require authentication header:
+```
+Authorization: Bearer <accessToken>
+```
+
+### GET /entries
+**Description**: Get all entry logs with pagination
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Records per page (default: 50)
+
+**Example**: `GET /entries?page=1&limit=50`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "entries": [
+      {
+        "logId": 1,
+        "userId": 1,
+        "entryTimestamp": "2025-11-14T10:30:00Z",
+        "entryMethod": "rfid",
+        "status": "success",
+        "user": {
+          "idNumber": "2021-0001",
+          "fullName": "Juan Dela Cruz",
+          "userType": "student"
+        }
+      }
+    ],
     "pagination": {
       "total": 100,
       "page": 1,
@@ -308,60 +466,56 @@ Response:
 }
 ```
 
-#### Get Entry by ID
-```
-GET /entries/:id
-Authorization: Bearer <accessToken>
+---
 
-Response:
-{
-  "success": true,
-  "data": { ...entry object... }
-}
-```
+### GET /entries/:id
+**Description**: Get specific entry log by ID
 
-#### Update Entry
-```
-PUT /entries/:id
-Authorization: Bearer <accessToken>
-Content-Type: application/json
+**Parameters**:
+- `id` (path): Entry log ID
 
-{
-  "entryTimestamp": "2025-01-01T10:00:00Z",
-  "entryMethod": "rfid",
-  "status": "success"
-}
-
-Response:
-{
-  "success": true,
-  "message": "Entry updated successfully",
-  "data": { ...updated entry... }
-}
-```
-
-#### Delete Entry
-```
-DELETE /entries/:id
-Authorization: Bearer <accessToken>
-
-Response:
-{
-  "success": true,
-  "message": "Entry deleted successfully"
-}
-```
-
-#### Get Active Entries (Real-time Monitoring)
-```
-GET /entries/active
-Authorization: Bearer <accessToken>
-
-Response:
+**Response** (200 OK):
+```json
 {
   "success": true,
   "data": {
-    "entries": [...],
+    "logId": 1,
+    "userId": 1,
+    "entryTimestamp": "2025-11-14T10:30:00Z",
+    "entryMethod": "rfid",
+    "status": "success",
+    "user": {
+      "idNumber": "2021-0001",
+      "fullName": "Juan Dela Cruz",
+      "email": "juan.delacruz@ustp.edu.ph",
+      "userType": "student",
+      "college": "CCS"
+    }
+  }
+}
+```
+
+---
+
+### GET /entries/active
+**Description**: Get real-time active entries (last 5 minutes) with statistics
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "entries": [
+      {
+        "logId": 15,
+        "userId": 3,
+        "entryTimestamp": "2025-11-14T10:28:00Z",
+        "user": {
+          "fullName": "Pedro Reyes",
+          "idNumber": "2022-0001"
+        }
+      }
+    ],
     "stats": {
       "totalToday": 150,
       "students": 120,
@@ -372,12 +526,13 @@ Response:
 }
 ```
 
-#### Filter/Search Entries
-```
-POST /entries/filter
-Authorization: Bearer <accessToken>
-Content-Type: application/json
+---
 
+### POST /entries/filter
+**Description**: Filter/search entry logs by multiple criteria
+
+**Request Body**:
+```json
 {
   "college": "College of Engineering",
   "userType": "student",
@@ -387,28 +542,163 @@ Content-Type: application/json
   "page": 1,
   "limit": 50
 }
+```
 
-Response:
+**Response** (200 OK):
+```json
 {
   "success": true,
   "data": {
     "entries": [...],
-    "pagination": { ... }
+    "pagination": {
+      "total": 25,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 1
+    }
   }
 }
 ```
 
-#### Export Entries
-```
-GET /entries/export?format=csv&startDate=2025-01-01&endDate=2025-01-31
-Authorization: Bearer <accessToken>
+---
 
-Response: CSV file download
+### GET /entries/export
+**Description**: Export entry logs to CSV format
+
+**Query Parameters**:
+- `format` (optional): Export format (default: "csv")
+- `startDate` (optional): Start date filter
+- `endDate` (optional): End date filter
+- `college` (optional): College filter
+- `userType` (optional): User type filter
+
+**Example**: `GET /entries/export?format=csv&startDate=2025-01-01&endDate=2025-01-31`
+
+**Response** (200 OK):
+```
+Content-Type: text/csv
+Content-Disposition: attachment; filename="entry_logs_2025-11-14.csv"
+
+Log ID,User ID,ID Number,Full Name,Entry Time,Method,Status,User Type,College
+1,1,2021-0001,Juan Dela Cruz,2025-11-14 10:30:00,rfid,success,student,CCS
+2,2,2021-0002,Maria Santos,2025-11-14 10:31:00,manual,success,student,CCS
 ```
 
 ---
 
-## Scripts
+### PUT /entries/:id
+**Description**: Update entry log status or details
+
+**Parameters**:
+- `id` (path): Entry log ID
+
+**Request Body**:
+```json
+{
+  "entryTimestamp": "2025-01-01T10:00:00Z",
+  "entryMethod": "rfid",
+  "status": "success"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Entry updated successfully",
+  "data": {
+    "logId": 1,
+    "entryTimestamp": "2025-01-01T10:00:00Z",
+    "entryMethod": "rfid",
+    "status": "success"
+  }
+}
+```
+
+---
+
+### DELETE /entries/:id
+**Description**: Delete entry log
+
+**Parameters**:
+- `id` (path): Entry log ID
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Entry deleted successfully"
+}
+```
+
+---
+
+## Database Schema
+
+### Tables
+
+#### `admins`
+Stores admin user information with role-based access control.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| admin_id | INTEGER | Primary key |
+| username | VARCHAR(50) | Unique username |
+| password_hash | VARCHAR(255) | Bcrypt hashed password |
+| full_name | VARCHAR(100) | Admin full name |
+| email | VARCHAR(100) | Admin email |
+| role | ENUM | 'super_admin' or 'staff' |
+| last_login | TIMESTAMP | Last login timestamp |
+| created_at | TIMESTAMP | Creation timestamp |
+| updated_at | TIMESTAMP | Update timestamp |
+
+#### `users`
+Stores student and faculty user records.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | INTEGER | Primary key |
+| id_number | VARCHAR(20) | Unique ID number |
+| rfid_tag | VARCHAR(50) | Unique RFID tag |
+| full_name | VARCHAR(100) | User full name |
+| email | VARCHAR(100) | User email |
+| user_type | ENUM | 'student', 'faculty', or 'staff' |
+| college | VARCHAR(100) | College/Department |
+| department | VARCHAR(100) | Specific department |
+| year_level | VARCHAR(10) | Year level (students) |
+| status | ENUM | 'active' or 'inactive' |
+| created_at | TIMESTAMP | Creation timestamp |
+| updated_at | TIMESTAMP | Update timestamp |
+
+#### `entry_logs`
+Records all library entry transactions.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| log_id | INTEGER | Primary key |
+| user_id | INTEGER | Foreign key to users |
+| entry_timestamp | TIMESTAMP | Entry date and time |
+| entry_method | ENUM | 'rfid' or 'manual' |
+| status | ENUM | 'success', 'duplicate', or 'error' |
+| created_at | TIMESTAMP | Creation timestamp |
+
+#### `audit_logs`
+Tracks all administrative actions for accountability.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| audit_id | INTEGER | Primary key |
+| admin_id | INTEGER | Foreign key to admins |
+| action_type | ENUM | Action performed |
+| target_table | VARCHAR(50) | Affected table |
+| target_id | INTEGER | Affected record ID |
+| description | TEXT | Action description |
+| timestamp | TIMESTAMP | Action timestamp |
+| ip_address | VARCHAR(45) | Admin IP address |
+
+---
+
+## NPM Scripts
 
 ```bash
 # Development
@@ -419,9 +709,9 @@ npm run build            # Compile TypeScript to dist/
 npm start                # Run production server
 
 # Database
-npm run db:create        # Create database tables
-npm run db:create-users  # Create user-related tables
-npm run db:sync          # Sync database models
+npm run db:create        # Create admin and audit tables
+npm run db:create-users  # Create user and entry log tables
+npm run db:sync          # Sync all database models
 npm run seed:admin       # Seed admin accounts (dev only)
 npm run seed:users       # Seed user accounts (dev only)
 npm run seed:all         # Seed all data (admin + users)
@@ -445,11 +735,12 @@ LENS---Backend/
 │   │   ├── config/                   # Configuration files
 │   │   │   ├── database.ts           # Sequelize & PostgreSQL setup
 │   │   │   ├── env.ts                # Environment variables
-│   │   │   └── mqtt.ts               # MQTT broker config
-|   |   |   └── syncDatabase.ts
+│   │   │   ├── mqtt.ts               # MQTT broker config
+│   │   │   └── syncDatabase.ts       # Database sync utility
 │   │   ├── controllers/              # Route handlers
 │   │   │   ├── authController.ts     # Auth operations
 │   │   │   ├── entryController.ts    # Entry logging
+│   │   │   ├── publicController.ts   # Public RFID endpoints
 │   │   │   ├── rfidController.ts     # RFID scanning
 │   │   │   └── userController.ts     # User management
 │   │   ├── middleware/               # Express middleware
@@ -459,28 +750,29 @@ LENS---Backend/
 │   │   │   └── validator.ts          # Input validation
 │   │   ├── models/                   # Sequelize models
 │   │   │   ├── Admin.ts              # Admin user model
-│   │   │   ├── AuditLog.ts           
+│   │   │   ├── AuditLog.ts           # Audit trail model
 │   │   │   ├── EntryLog.ts           # Entry log model
-│   │   │   └── User.ts               
+│   │   │   └── User.ts               # User model
 │   │   ├── routes/                   # API routes
 │   │   │   ├── authRoutes.ts         # Auth endpoints
 │   │   │   ├── entryRoutes.ts        # Entry endpoints
+│   │   │   └── publicRoutes.ts       # Public endpoints
 │   │   ├── services/                 # Business logic
-|   |   |   ├── auditService.ts
+│   │   │   ├── auditService.ts       # Audit logging
 │   │   │   ├── hardwareService.ts    # RFID hardware control
 │   │   │   ├── notificationService.ts # Notifications
 │   │   │   └── reportService.ts      # Reporting
 │   │   ├── utils/                    # Utility functions
 │   │   │   ├── helpers.ts            # Helper functions
-|   |   |   ├── jwt.ts
+│   │   │   ├── jwt.ts                # JWT utilities
 │   │   │   ├── logger.ts             # Logging
 │   │   │   └── response.ts           # Response formatting
 │   │   └── app.ts                    # Express app setup
 │   ├── scripts/                      # Utility scripts
 │   │   ├── createTables.ts           # Database table creation
-|   |   ├── createUserTables.ts
+│   │   ├── createUserTables.ts       # User tables creation
 │   │   ├── seedAdmin.ts              # Admin account seeding
-|   |   ├── seedUsers.ts
+│   │   ├── seedUsers.ts              # User data seeding
 │   │   └── syncDatabase.ts           # Database sync
 │   └── test/                         # Test files
 ├── package.json                      # Dependencies
@@ -490,40 +782,85 @@ LENS---Backend/
 
 ---
 
-## Contributing
+## Testing
 
-New contributors should review the detailed workflow, tooling, and review expectations in [`AGENTS.md`](AGENTS.md). Follow that guide before opening a PR so your branch naming, lint/test checks, and database scripts align with team standards.
+### Default Test Credentials
 
----
-
-## Default Credentials (Development Only)
-
-After running `npm run seed:admin`:
+**Admin Accounts** (after running `npm run seed:admin`):
 
 | Role | Username | Password | Email |
 |------|----------|----------|-------|
 | Super Admin | `admin` | `password` | `admin@ustp.edu.ph` |
 | Staff | `staff` | `password123` | `staff@ustp.edu.ph` |
 
-**⚠️ IMPORTANT**: Change these credentials immediately in production!
+⚠️ **IMPORTANT**: Change these credentials immediately in production!
+
+**Test Users** (after running `npm run seed:users`):
+- **RFID001** → Juan Dela Cruz (2021-0001)
+- **RFID002** → Maria Santos (2021-0002)
+- **RFID003** → Pedro Reyes (2022-0001)
+- **RFID_FAC001** → Dr. Ana Garcia (FAC-001)
+- **RFID_FAC002** → Engr. Carlos Mendoza (FAC-002)
+
+### Manual Testing with cURL
+
+**Login**:
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"password"}'
+```
+
+**RFID Scan**:
+```bash
+curl -X POST http://localhost:5000/api/entries/scan \
+  -H "Content-Type: application/json" \
+  -d '{"rfidTag":"RFID001"}'
+```
+
+**Manual Entry**:
+```bash
+curl -X POST http://localhost:5000/api/entries/manual \
+  -H "Content-Type: application/json" \
+  -d '{"idNumber":"2021-0002"}'
+```
+
+**Validate RFID**:
+```bash
+curl -X GET http://localhost:5000/api/entries/validate/RFID001
+```
+
+**Get User Info**:
+```bash
+curl -X GET http://localhost:5000/api/users/2021-0001
+# or
+curl -X GET http://localhost:5000/api/users/RFID001
+```
+
+**Get Entry Logs** (Protected):
+```bash
+curl -X GET http://localhost:5000/api/entries \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
 
 ---
 
-## Authentication
+## Security Features
 
-All protected endpoints require a Bearer token in the Authorization header:
-
-```
-Authorization: Bearer <accessToken>
-```
-
-Tokens expire after 1 hour. Use the refresh token endpoint to get a new access token.
+- **Password Hashing**: bcrypt with 10 salt rounds
+- **JWT Authentication**: Stateless authentication with access and refresh tokens
+- **Role-Based Access Control**: Super admin and staff roles
+- **Audit Trail**: Complete logging of administrative actions
+- **IP Logging**: Security monitoring with IP address tracking
+- **Duplicate Prevention**: 5-minute sliding window for entry detection
+- **Rate Limiting**: Protection against abuse
+- **Input Validation**: All inputs validated and sanitized
 
 ---
 
 ## Error Handling
 
-All error responses follow this format:
+All API endpoints follow a consistent error response format:
 
 ```json
 {
@@ -533,23 +870,38 @@ All error responses follow this format:
 }
 ```
 
-Common status codes:
-- `200` - Success
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `500` - Internal Server Error
+### Common HTTP Status Codes
+
+- **200 OK**: Request successful
+- **201 Created**: Resource created successfully
+- **400 Bad Request**: Invalid request data
+- **401 Unauthorized**: Authentication required or failed
+- **403 Forbidden**: Insufficient permissions
+- **404 Not Found**: Resource not found
+- **500 Internal Server Error**: Server error
 
 ---
 
 ## Project Status
 
-🚧 **In Development** - Initial setup phase
+🚧 **In Development**
+
+### Completed Features
+- ✅ JWT Authentication System
+- ✅ Admin User Management
+- ✅ Public Entry Endpoints (RFID/Manual)
+- ✅ Entry Log Management with CRUD operations
+- ✅ Duplicate Detection (5-minute window)
+- ✅ CSV Export functionality
+- ✅ Audit Logging
+- ✅ Real-time Active Entries monitoring
+- ✅ Advanced Filtering and Search
+
+### Upcoming Features
+- 🔄 User Management Dashboard
+- 🔄 Advanced Analytics and Reports
+- 🔄 Email Notifications
+- 🔄 Mobile Application Support
+- 🔄 WebSocket for Real-time Updates
 
 ---
-
-## Institution
-
-**University of Science and Technology of Southern Philippines**  
-Cagayan de Oro Campus
