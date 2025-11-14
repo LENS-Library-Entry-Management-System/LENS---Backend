@@ -48,10 +48,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const refreshToken = generateRefreshToken(payload);
 
     await logAuditAction({
-      admin_id: admin.adminId,
-      action_type: 'login',
+      adminId: admin.adminId,
+      actionType: 'login',
       description: 'Admin logged in',
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -84,10 +84,10 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     }
 
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'logout',
+      adminId: req.admin.adminId,
+      actionType: 'logout',
       description: 'Admin logged out',
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -192,10 +192,10 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     await admin.save();
 
     await logAuditAction({
-      admin_id: admin.adminId,
-      action_type: 'edit',
-      target_table: 'admins',
-      target_id: admin.adminId,
+      adminId: admin.adminId,
+      actionType: 'edit',
+      targetTable: 'admins',
+      targetId: admin.adminId,
       description: JSON.stringify({
         old: oldValues,
         new: {
@@ -204,7 +204,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           passwordChanged: !!newPassword,
         },
       }),
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({

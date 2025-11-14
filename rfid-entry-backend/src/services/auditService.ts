@@ -1,23 +1,23 @@
 import AuditLog from '../models/AuditLog';
 
 interface AuditLogData {
-  admin_id: number;
-  action_type: 'view' | 'edit' | 'delete' | 'export' | 'login' | 'logout';
-  target_table?: string | null;
-  target_id?: number | null;
+  adminId: number;
+  actionType: 'view' | 'edit' | 'delete' | 'export' | 'login' | 'logout';
+  targetTable?: string | null;
+  targetId?: number | null;
   description?: string | null;
-  ip_address?: string | null;
+  ipAddress?: string | null;
 }
 
 export const logAuditAction = async (data: AuditLogData): Promise<void> => {
   try {
     await AuditLog.create({
-      admin_id: data.admin_id,
-      action_type: data.action_type,
-      target_table: data.target_table || null,
-      target_id: data.target_id || null,
+      adminId: data.adminId,
+      actionType: data.actionType,
+      targetTable: data.targetTable || null,
+      targetId: data.targetId || null,
       description: data.description || null,
-      ip_address: data.ip_address || null,
+      ipAddress: data.ipAddress || null,
       timestamp: new Date(),
     });
   } catch (error) {

@@ -133,10 +133,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     // Log audit action
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'edit',
-      target_table: 'users',
-      target_id: user.userId,
+      adminId: req.admin.adminId,
+      actionType: 'edit',
+      targetTable: 'users',
+      targetId: user.userId,
       description: JSON.stringify({
         action: 'create',
         user: {
@@ -145,7 +145,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
           userType: user.userType,
         },
       }),
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.status(201).json({
@@ -313,10 +313,10 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
     // Log audit action
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'edit',
-      target_table: 'users',
-      target_id: user.userId,
+      adminId: req.admin.adminId,
+      actionType: 'edit',
+      targetTable: 'users',
+      targetId: user.userId,
       description: JSON.stringify({
         old: oldValues,
         new: {
@@ -332,7 +332,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
           status: user.status,
         },
       }),
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -386,14 +386,14 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
     // Log audit action
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'delete',
-      target_table: 'users',
-      target_id: parseInt(id),
+      adminId: req.admin.adminId,
+      actionType: 'delete',
+      targetTable: 'users',
+      targetId: parseInt(id),
       description: JSON.stringify({
         deletedUser: deletedUserInfo,
       }),
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
