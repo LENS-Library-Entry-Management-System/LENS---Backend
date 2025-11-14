@@ -5,6 +5,7 @@ import morgan from "morgan";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import publicRoutes from "./routes/publicRoutes";
+import reportRoutes from "./routes/reportRoutes";
 
 const app = express();
 
@@ -31,6 +32,7 @@ import entryRoutes from "./routes/entryRoutes";
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api", publicRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Error handling
 app.use(errorHandler);

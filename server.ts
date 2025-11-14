@@ -7,6 +7,7 @@ import { testRedisConnection } from "./rfid-entry-backend/src/config/redis";
 import authRoutes from "./rfid-entry-backend/src/routes/authRoutes";
 import EntryRoutes from './rfid-entry-backend/src/routes/entryRoutes'
 import publicRoutes from './rfid-entry-backend/src/routes/publicRoutes';
+import reportRoutes from './rfid-entry-backend/src/routes/reportRoutes';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api', publicRoutes);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/entries', EntryRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {
@@ -88,6 +90,7 @@ const startServer = async () => {
       console.log(`API: http://localhost:${PORT}`);
       console.log(`Health: http://localhost:${PORT}/health`);
       console.log(`Auth API: http://localhost:${PORT}/api/auth`);
+      console.log(`Reports API: http://localhost:${PORT}/api/reports`);
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
   } catch (error) {
