@@ -9,7 +9,7 @@ export class AnalyticsController {
    * GET /api/dashboard/stats
    * Overall statistics
    */
-  static async getDashboardStats(_req: Request, res: Response) {
+  static async getDashboardStats(_req: Request, res: Response): Promise<void> {
     try {
       console.log('Fetching dashboard stats...');
 
@@ -74,7 +74,7 @@ export class AnalyticsController {
    * GET /api/analytics/peak-hours
    * Peak hours analysis
    */
-  static async getPeakHours(_req: Request, res: Response) {
+  static async getPeakHours(_req: Request, res: Response): Promise<void> {
     try {
       console.log('Fetching peak hours...');
 
@@ -137,7 +137,7 @@ export class AnalyticsController {
    * GET /api/analytics/trends
    * Entry trends over time
    */
-  static async getTrends(req: Request, res: Response) {
+  static async getTrends(req: Request, res: Response): Promise<void> {
     try {
       const { period = '30d' } = req.query;
       console.log('Fetching trends for period:', period);
@@ -206,7 +206,7 @@ export class AnalyticsController {
    * GET /api/analytics/by-college
    * College breakdown
    */
-  static async getByCollege(_req: Request, res: Response) {
+  static async getByCollege(_req: Request, res: Response): Promise<void> {
     try {
       console.log('Fetching college breakdown...');
 
@@ -252,7 +252,7 @@ export class AnalyticsController {
    * GET /api/analytics/by-department
    * Department breakdown
    */
-  static async getByDepartment(_req: Request, res: Response) {
+  static async getByDepartment(_req: Request, res: Response): Promise<void> {
     try {
       console.log('Fetching department breakdown...');
 
