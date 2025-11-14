@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
 import AuditLog from '../models/AuditLog';
 import Admin from '../models/Admin';
 import sequelize from '../config/database';
@@ -18,7 +18,7 @@ export const getAllAuditLogs = async (req: Request, res: Response): Promise<void
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
 
-    const where: any = {};
+    const where: WhereOptions = {};
 
     // Filter by action type
     if (actionType) {
@@ -132,7 +132,7 @@ export const getAuditLogsByAdmin = async (req: Request, res: Response): Promise<
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
 
-    const where: any = {
+    const where: WhereOptions = {
       adminId: parseInt(adminId),
     };
 
@@ -223,7 +223,7 @@ export const getAuditStats = async (req: Request, res: Response): Promise<void> 
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
 
-    const where: any = {};
+    const where: WhereOptions & { [k: symbol]: unknown } = {};
 
     // Filter by date range
     if (startDate || endDate) {
@@ -273,7 +273,7 @@ export const getAuditStats = async (req: Request, res: Response): Promise<void> 
     const actionsByTable = await AuditLog.findAll({
       where: {
         ...where,
-        targetTable: { [Op.ne]: null },
+        target_table: { [Op.ne]: null },
       },
       attributes: [
         'targetTable',
