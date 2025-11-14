@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+import Admin from './Admin';
 
 interface AuditLogAttributes {
   audit_id: number;
@@ -68,5 +69,9 @@ AuditLog.init(
     timestamps: false,
   }
 );
+
+// Define associations
+AuditLog.belongsTo(Admin, { foreignKey: 'adminId', as: 'admin' });
+Admin.hasMany(AuditLog, { foreignKey: 'adminId', as: 'auditLogs' });
 
 export default AuditLog;

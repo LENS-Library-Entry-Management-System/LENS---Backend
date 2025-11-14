@@ -8,6 +8,7 @@ import authRoutes from "./rfid-entry-backend/src/routes/authRoutes";
 import EntryRoutes from './rfid-entry-backend/src/routes/entryRoutes'
 import publicRoutes from './rfid-entry-backend/src/routes/publicRoutes';
 import userRoutes from './rfid-entry-backend/src/routes/userRoutes';
+import auditRoutes from './rfid-entry-backend/src/routes/auditRoutes';
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use((req, _res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/entries', EntryRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/audit-logs', auditRoutes);
 
 // Public routes (no auth required) - mount after authenticated routes to avoid conflicts
 app.use('/api', publicRoutes);
