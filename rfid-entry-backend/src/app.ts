@@ -7,6 +7,7 @@ import logger from "./utils/logger";
 import publicRoutes from "./routes/publicRoutes";
 import reportRoutes from "./routes/reportRoutes";
 
+
 const app = express();
 
 // Middleware
@@ -26,10 +27,12 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 // API Routes
+import analyticsRoutes from "./routes/analyticsRoutes";
 import authRoutes from "./routes/authRoutes";
 import entryRoutes from "./routes/entryRoutes";
 import userRoutes from "./routes/userRoutes";
 
+app.use("/api", analyticsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
 // Mount authenticated user routes before public routes so '/api/users/search' is handled

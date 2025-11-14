@@ -31,11 +31,11 @@ export const getDailyReport = async (req: Request, res: Response): Promise<void>
     const stats = generateStats(entries);
 
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'view',
-      target_table: 'reports',
+      adminId: req.admin.adminId,
+      actionType: 'view',
+      targetTable: 'reports',
       description: 'Viewed daily report',
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -83,11 +83,11 @@ export const getWeeklyReport = async (req: Request, res: Response): Promise<void
     const stats = generateStats(entries);
 
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'view',
-      target_table: 'reports',
+      adminId: req.admin.adminId,
+      actionType: 'view',
+      targetTable: 'reports',
       description: 'Viewed weekly report',
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -136,11 +136,11 @@ export const getMonthlyReport = async (req: Request, res: Response): Promise<voi
     const stats = generateStats(entries);
 
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'view',
-      target_table: 'reports',
+      adminId: req.admin.adminId,
+      actionType: 'view',
+      targetTable: 'reports',
       description: 'Viewed monthly report',
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -213,11 +213,11 @@ export const getCustomReport = async (req: Request, res: Response): Promise<void
     const stats = generateStats(entries);
 
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'view',
-      target_table: 'reports',
+      adminId: req.admin.adminId,
+      actionType: 'view',
+      targetTable: 'reports',
       description: `Viewed custom report (${startDate} to ${endDate})`,
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -341,11 +341,11 @@ export const generateReport = async (req: Request, res: Response): Promise<void>
       ].join('\n');
 
       await logAuditAction({
-        admin_id: req.admin.adminId,
-        action_type: 'export',
-        target_table: 'reports',
+        adminId: req.admin.adminId,
+        actionType: 'export',
+        targetTable: 'reports',
         description: `Generated ${reportType} report (${entries.length} entries)`,
-        ip_address: req.ip || req.socket.remoteAddress || null,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
       });
 
       res.setHeader('Content-Type', 'text/csv');
@@ -411,12 +411,12 @@ export const exportEntryById = async (req: Request, res: Response): Promise<void
     ].join('\n');
 
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'export',
-      target_table: 'entry_logs',
-      target_id: entry.logId,
+      adminId: req.admin.adminId,
+      actionType: 'export',
+      targetTable: 'entry_logs',
+      targetId: entry.logId,
       description: `Exported entry log ID ${id}`,
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.setHeader('Content-Type', 'text/csv');
