@@ -6,6 +6,11 @@ import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import publicRoutes from "./routes/publicRoutes";
 
+// API Routes imports
+import authRoutes from "./routes/authRoutes";
+import entryRoutes from "./routes/entryRoutes";
+import analyticsRoutes from "./routes/analyticsRoutes";
+
 const app = express();
 
 // Middleware
@@ -25,14 +30,10 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 // API Routes
-import authRoutes from "./routes/authRoutes";
-import entryRoutes from "./routes/entryRoutes";
-import analyticsRoutes from "./routes/analyticsRoutes";
-
+app.use("/api", analyticsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
 app.use("/api", publicRoutes);
-app.use("/api", analyticsRoutes);
 
 // Error handling
 app.use(errorHandler);

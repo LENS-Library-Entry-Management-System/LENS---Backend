@@ -4,7 +4,16 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// Apply authentication middleware to all analytics routes
+// Health check for analytics routes (no auth required)
+router.get('/analytics/health', (_req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Analytics routes are working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Apply authentication middleware to all protected analytics routes
 router.use(authenticate);
 
 // Dashboard & Analytics Routes

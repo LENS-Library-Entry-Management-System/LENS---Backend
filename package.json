@@ -11,11 +11,13 @@
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "db:create": "ts-node rfid-entry-backend/scripts/createTables.ts",
+    "db:analytics": "ts-node rfid-entry-backend/scripts/analyticsTable.ts",  
     "db:create-users": "ts-node rfid-entry-backend/scripts/createUserTables.ts",
     "db:sync": "ts-node rfid-entry-backend/scripts/syncDatabase.ts",
     "seed:admin": "ts-node rfid-entry-backend/scripts/seedAdmin.ts",
     "seed:users": "ts-node rfid-entry-backend/scripts/seedUsers.ts",
     "seed:all": "npm run seed:admin && npm run seed:users",
+    "seed:analytics": "ts-node rfid-entry-backend/scripts/seedAnalytics.ts",
     "type-check": "tsc --noEmit",
     "prepare": "husky"
   },

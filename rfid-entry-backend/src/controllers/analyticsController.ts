@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import sequelize from '../config/database';
-import { QueryTypes } from 'sequelize';
+import { QueryTypes, Op } from 'sequelize';
+import User from '../models/User';
+import EntryLog from '../models/EntryLog';
 
 export class AnalyticsController {
   /**
@@ -9,35 +11,45 @@ export class AnalyticsController {
    */
   static async getDashboardStats(_req: Request, res: Response) {
     try {
+      console.log('Fetching dashboard stats...');
+
       // Get total entries count
-      const totalEntriesResult = await sequelize.query<{ count: string }>(
-        'SELECT COUNT(*) as count FROM entries',
-        { type: QueryTypes.SELECT }
-      );
-      const totalEntries = parseInt(totalEntriesResult[0].count);
+      const totalEntries = await EntryLog.count();
+      console.log('Total entries:', totalEntries);
 
       // Get unique students count
-      const uniqueStudentsResult = await sequelize.query<{ count: string }>(
-        'SELECT COUNT(DISTINCT student_id) as count FROM entries',
-        { type: QueryTypes.SELECT }
-      );
-      const uniqueStudents = parseInt(uniqueStudentsResult[0].count);
+      const uniqueStudents = await User.count({
+        where: { userType: 'student' }
+      });
+      console.log('Unique students:', uniqueStudents);
 
       // Get today's entries
-      const todayEntriesResult = await sequelize.query<{ count: string }>(
-        `SELECT COUNT(*) as count FROM entries 
-         WHERE DATE(timestamp) = CURRENT_DATE`,
-        { type: QueryTypes.SELECT }
-      );
-      const todayEntries = parseInt(todayEntriesResult[0].count);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const todayEntries = await EntryLog.count({
+        where: {
+          entryTimestamp: {
+            [Op.gte]: todayStart
+          }
+        }
+      });
+      console.log('Today\'s entries:', todayEntries);
 
       // Get average entries per day (last 30 days)
-      const recentEntriesResult = await sequelize.query<{ count: string }>(
-        `SELECT COUNT(*) as count FROM entries 
-         WHERE timestamp >= CURRENT_DATE - INTERVAL '30 days'`,
-        { type: QueryTypes.SELECT }
-      );
-      const recentEntries = parseInt(recentEntriesResult[0].count);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentEntries = await EntryLog.count({
+        where: {
+          entryTimestamp: {
+            [Op.gte]: thirtyDaysAgo
+          }
+        }
+      });
+
+      const averageEntriesPerDay = Math.round(recentEntries / 30);
+      console.log('Average entries per day:', averageEntriesPerDay);
 
       res.json({
         success: true,
@@ -45,7 +57,7 @@ export class AnalyticsController {
           totalEntries,
           uniqueStudents,
           todayEntries,
-          averageEntriesPerDay: Math.round(recentEntries / 30),
+          averageEntriesPerDay,
         },
       });
     } catch (error) {
@@ -53,6 +65,7 @@ export class AnalyticsController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch dashboard statistics',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -63,10 +76,12 @@ export class AnalyticsController {
    */
   static async getPeakHours(_req: Request, res: Response) {
     try {
+      console.log('Fetching peak hours...');
+
       const result = await sequelize.query<{ hour: string; count: string }>(
-        `SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
-         FROM entries
-         GROUP BY EXTRACT(HOUR FROM timestamp)
+        `SELECT EXTRACT(HOUR FROM entry_timestamp) as hour, COUNT(*) as count
+         FROM entry_logs
+         GROUP BY EXTRACT(HOUR FROM entry_timestamp)
          ORDER BY hour`,
         { type: QueryTypes.SELECT }
       );
@@ -95,6 +110,8 @@ export class AnalyticsController {
         curr.count > max.count ? curr : max
       );
 
+      console.log('Peak hour:', peakHour);
+
       res.json({
         success: true,
         data: {
@@ -111,6 +128,7 @@ export class AnalyticsController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch peak hours analysis',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -122,16 +140,17 @@ export class AnalyticsController {
   static async getTrends(req: Request, res: Response) {
     try {
       const { period = '30d' } = req.query;
+      console.log('Fetching trends for period:', period);
 
       let daysBack = 30;
       if (period === '7d') daysBack = 7;
       else if (period === '90d') daysBack = 90;
 
       const result = await sequelize.query<{ date: Date; count: string }>(
-        `SELECT DATE(timestamp) as date, COUNT(*) as count
-         FROM entries
-         WHERE timestamp >= CURRENT_DATE - INTERVAL '${daysBack} days'
-         GROUP BY DATE(timestamp)
+        `SELECT DATE(entry_timestamp) as date, COUNT(*) as count
+         FROM entry_logs
+         WHERE entry_timestamp >= CURRENT_DATE - INTERVAL '${daysBack} days'
+         GROUP BY DATE(entry_timestamp)
          ORDER BY date ASC`,
         { type: QueryTypes.SELECT }
       );
@@ -140,7 +159,7 @@ export class AnalyticsController {
       const dateCounts: { [key: string]: number } = {};
       for (let i = 0; i < daysBack; i++) {
         const date = new Date();
-        date.setDate(date.getDate() - daysBack + i);
+        date.setDate(date.getDate() - daysBack + i + 1);
         const dateKey = date.toISOString().split('T')[0];
         dateCounts[dateKey] = 0;
       }
@@ -163,6 +182,8 @@ export class AnalyticsController {
 
       const totalEntries = result.reduce((sum, row) => sum + parseInt(row.count), 0);
 
+      console.log('Trends data points:', trendsData.length);
+
       res.json({
         success: true,
         data: {
@@ -176,6 +197,7 @@ export class AnalyticsController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch entry trends',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -186,27 +208,28 @@ export class AnalyticsController {
    */
   static async getByCollege(_req: Request, res: Response) {
     try {
+      console.log('Fetching college breakdown...');
+
       const result = await sequelize.query<{ college: string; count: string }>(
-        `SELECT s.college, COUNT(e.id) as count
-         FROM entries e
-         JOIN students s ON e.student_id = s.id
-         GROUP BY s.college
+        `SELECT u.college, COUNT(el.log_id) as count
+         FROM entry_logs el
+         JOIN users u ON el.user_id = u.user_id
+         WHERE u.user_type = 'student'
+         GROUP BY u.college
          ORDER BY count DESC`,
         { type: QueryTypes.SELECT }
       );
 
-      const totalEntriesResult = await sequelize.query<{ count: string }>(
-        'SELECT COUNT(*) as count FROM entries',
-        { type: QueryTypes.SELECT }
-      );
-      const totalEntries = parseInt(totalEntriesResult[0].count);
+      const totalEntries = await EntryLog.count();
 
       // Format for response
       const collegeData = result.map((row) => ({
         college: row.college || 'Unknown',
         count: parseInt(row.count),
-        percentage: ((parseInt(row.count) / totalEntries) * 100).toFixed(2),
+        percentage: totalEntries > 0 ? ((parseInt(row.count) / totalEntries) * 100).toFixed(2) : '0.00',
       }));
+
+      console.log('College breakdown:', collegeData);
 
       res.json({
         success: true,
@@ -220,6 +243,7 @@ export class AnalyticsController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch college breakdown',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
@@ -230,28 +254,29 @@ export class AnalyticsController {
    */
   static async getByDepartment(_req: Request, res: Response) {
     try {
+      console.log('Fetching department breakdown...');
+
       const result = await sequelize.query<{ department: string; college: string; count: string }>(
-        `SELECT s.department, s.college, COUNT(e.id) as count
-         FROM entries e
-         JOIN students s ON e.student_id = s.id
-         GROUP BY s.department, s.college
+        `SELECT u.department, u.college, COUNT(el.log_id) as count
+         FROM entry_logs el
+         JOIN users u ON el.user_id = u.user_id
+         WHERE u.user_type = 'student'
+         GROUP BY u.department, u.college
          ORDER BY count DESC`,
         { type: QueryTypes.SELECT }
       );
 
-      const totalEntriesResult = await sequelize.query<{ count: string }>(
-        'SELECT COUNT(*) as count FROM entries',
-        { type: QueryTypes.SELECT }
-      );
-      const totalEntries = parseInt(totalEntriesResult[0].count);
+      const totalEntries = await EntryLog.count();
 
       // Format for response
       const departmentData = result.map((row) => ({
         department: row.department || 'Unknown',
         college: row.college || 'Unknown',
         count: parseInt(row.count),
-        percentage: ((parseInt(row.count) / totalEntries) * 100).toFixed(2),
+        percentage: totalEntries > 0 ? ((parseInt(row.count) / totalEntries) * 100).toFixed(2) : '0.00',
       }));
+
+      console.log('Department breakdown:', departmentData);
 
       res.json({
         success: true,
@@ -265,6 +290,7 @@ export class AnalyticsController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch department breakdown',
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
