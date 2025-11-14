@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
+import publicRoutes from "./routes/publicRoutes";
 
 const app = express();
 
@@ -30,6 +31,7 @@ import analyticsRoutes from "./routes/analyticsRoutes";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/entries", entryRoutes);
+app.use("/api", publicRoutes);
 app.use("/api", analyticsRoutes);
 
 // Error handling
