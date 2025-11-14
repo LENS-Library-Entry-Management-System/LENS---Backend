@@ -4,6 +4,7 @@ import cors from 'cors';
 import { testConnection } from './rfid-entry-backend/src/config/database';
 // import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
 import authRoutes from './rfid-entry-backend/src/routes/authRoutes';
+import EntryRoutes from './rfid-entry-backend/src/routes/entryRoutes'
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use((req, _res, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/entries', EntryRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {
