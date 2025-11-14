@@ -181,7 +181,7 @@ export const getAuditLogsByAdmin = async (req: Request, res: Response): Promise<
 
     // Get statistics
     const actionStats = await AuditLog.findAll({
-      where: { admin_id: parseInt(adminId) },
+      where: { adminId: parseInt(adminId) },
       attributes: [
         'actionType',
         [sequelize.fn('COUNT', sequelize.col('audit_id')), 'count'],
@@ -257,12 +257,13 @@ export const getAuditStats = async (req: Request, res: Response): Promise<void> 
         'adminId',
         [sequelize.fn('COUNT', sequelize.col('audit_id')), 'count'],
       ],
-      group: ['adminId'],
+      group: ['adminId', 'admin.admin_id', 'admin.username', 'admin.full_name'],
       include: [
         {
           model: Admin,
           as: 'admin',
-          attributes: ['username', 'fullName'],
+          attributes: ['adminId', 'username', 'fullName'],
+          required: true,
         },
       ],
       order: [[sequelize.fn('COUNT', sequelize.col('audit_id')), 'DESC']],
@@ -273,7 +274,7 @@ export const getAuditStats = async (req: Request, res: Response): Promise<void> 
     const actionsByTable = await AuditLog.findAll({
       where: {
         ...where,
-        target_table: { [Op.ne]: null },
+        targetTable: { [Op.ne]: null },
       },
       attributes: [
         'targetTable',
