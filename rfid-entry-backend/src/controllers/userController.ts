@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
 import User from '../models/User';
 import EntryLog from '../models/EntryLog';
 import { logAuditAction } from '../services/auditService';
@@ -13,7 +13,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const userType = req.query.userType as string;
     const status = req.query.status as string;
 
-    const where: any = {};
+    const where: WhereOptions & { [k: symbol]: unknown } = {};
 
     if (userType) where.userType = userType;
     if (status) where.status = status;
@@ -48,13 +48,14 @@ export const getAllUsers = async (req: Request, res: Response) => {
 };
 
 // POST /api/users - Create user
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const {
@@ -72,44 +73,49 @@ export const createUser = async (req: Request, res: Response) => {
 
     // Validation
     if (!idNumber || !rfidTag || !firstName || !lastName || !userType || !college || !department) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Missing required fields: idNumber, rfidTag, firstName, lastName, userType, college, department',
       });
+      return;
     }
 
     // Check if ID number already exists
     const existingIdNumber = await User.findOne({ where: { idNumber } });
     if (existingIdNumber) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         message: 'ID number already exists',
       });
+      return;
     }
 
     // Check if RFID tag already exists
     const existingRfid = await User.findOne({ where: { rfidTag } });
     if (existingRfid) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         message: 'RFID tag already exists',
       });
+      return;
     }
 
     // Validate user type
     if (!['student', 'faculty'].includes(userType)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid user type. Must be "student" or "faculty"',
       });
+      return;
     }
 
     // Validate year level for students
     if (userType === 'student' && !yearLevel) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Year level is required for students',
       });
+      return;
     }
 
     const user = await User.create({
@@ -158,7 +164,7 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 // GET /api/users/:id - Get user details
-export const getUserById = async (req: Request, res: Response) => {
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -175,10 +181,11 @@ export const getUserById = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'User not found',
       });
+      return;
     }
 
     // Get entry statistics
@@ -219,13 +226,14 @@ export const getUserById = async (req: Request, res: Response) => {
 };
 
 // PUT /api/users/:id - Update user
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const { id } = req.params;
@@ -245,10 +253,11 @@ export const updateUser = async (req: Request, res: Response) => {
     const user = await User.findByPk(id);
 
     if (!user) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'User not found',
       });
+      return;
     }
 
     const oldValues = {
@@ -268,10 +277,11 @@ export const updateUser = async (req: Request, res: Response) => {
     if (idNumber && idNumber !== user.idNumber) {
       const existingIdNumber = await User.findOne({ where: { idNumber } });
       if (existingIdNumber) {
-        return res.status(409).json({
+        res.status(409).json({
           success: false,
           message: 'ID number already exists',
         });
+        return;
       }
       user.idNumber = idNumber;
     }
@@ -280,10 +290,11 @@ export const updateUser = async (req: Request, res: Response) => {
     if (rfidTag && rfidTag !== user.rfidTag) {
       const existingRfid = await User.findOne({ where: { rfidTag } });
       if (existingRfid) {
-        return res.status(409).json({
+        res.status(409).json({
           success: false,
           message: 'RFID tag already exists',
         });
+        return;
       }
       user.rfidTag = rfidTag;
     }
@@ -340,13 +351,14 @@ export const updateUser = async (req: Request, res: Response) => {
 };
 
 // DELETE /api/users/:id - Delete user
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Unauthorized',
       });
+      return;
     }
 
     const { id } = req.params;
@@ -354,10 +366,11 @@ export const deleteUser = async (req: Request, res: Response) => {
     const user = await User.findByPk(id);
 
     if (!user) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'User not found',
       });
+      return;
     }
 
     // Store user info before deletion
@@ -398,18 +411,19 @@ export const deleteUser = async (req: Request, res: Response) => {
 };
 
 // GET /api/users/search - Search users
-export const searchUsers = async (req: Request, res: Response) => {
+export const searchUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const { q, userType, college, department, status, page = 1, limit = 50 } = req.query;
 
     if (!q) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Search query "q" is required',
       });
+      return;
     }
 
-    const where: any = {};
+    const where: WhereOptions & { [k: symbol]: unknown } = {};
 
     // Search in multiple fields
     where[Op.or] = [
