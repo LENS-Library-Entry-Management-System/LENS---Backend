@@ -106,7 +106,7 @@ npm run build
 npm run db:create
 
 # Seed admin accounts (development only)
-npm run seed:admin
+npm run seed:all
 
 # Start development server
 npm run dev
@@ -286,6 +286,126 @@ Response:
 }
 ```
 
+### Entry Management Endpoints
+
+#### Get All Entries
+```
+GET /entries?page=1&limit=50
+Authorization: Bearer <accessToken>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "entries": [...],
+    "pagination": {
+      "total": 100,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+#### Get Entry by ID
+```
+GET /entries/:id
+Authorization: Bearer <accessToken>
+
+Response:
+{
+  "success": true,
+  "data": { ...entry object... }
+}
+```
+
+#### Update Entry
+```
+PUT /entries/:id
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "entryTimestamp": "2025-01-01T10:00:00Z",
+  "entryMethod": "rfid",
+  "status": "success"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Entry updated successfully",
+  "data": { ...updated entry... }
+}
+```
+
+#### Delete Entry
+```
+DELETE /entries/:id
+Authorization: Bearer <accessToken>
+
+Response:
+{
+  "success": true,
+  "message": "Entry deleted successfully"
+}
+```
+
+#### Get Active Entries (Real-time Monitoring)
+```
+GET /entries/active
+Authorization: Bearer <accessToken>
+
+Response:
+{
+  "success": true,
+  "data": {
+    "entries": [...],
+    "stats": {
+      "totalToday": 150,
+      "students": 120,
+      "faculty": 30,
+      "lastHour": 25
+    }
+  }
+}
+```
+
+#### Filter/Search Entries
+```
+POST /entries/filter
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "college": "College of Engineering",
+  "userType": "student",
+  "startDate": "2025-01-01",
+  "endDate": "2025-01-31",
+  "searchQuery": "John",
+  "page": 1,
+  "limit": 50
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "entries": [...],
+    "pagination": { ... }
+  }
+}
+```
+
+#### Export Entries
+```
+GET /entries/export?format=csv&startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer <accessToken>
+
+Response: CSV file download
+```
+
 ---
 
 ## Scripts
@@ -300,12 +420,17 @@ npm start                # Run production server
 
 # Database
 npm run db:create        # Create database tables
+npm run db:create-users  # Create user-related tables
 npm run db:sync          # Sync database models
 npm run seed:admin       # Seed admin accounts (dev only)
+npm run seed:users       # Seed user accounts (dev only)
+npm run seed:all         # Seed all data (admin + users)
 
 # Quality
 npm run lint             # Run ESLint
+npm run lint:fix         # Run ESLint with auto-fix
 npm run type-check       # Run TypeScript compiler check
+npm run test             # Run Jest tests with coverage
 ```
 
 ---
@@ -321,6 +446,7 @@ LENS---Backend/
 │   │   │   ├── database.ts           # Sequelize & PostgreSQL setup
 │   │   │   ├── env.ts                # Environment variables
 │   │   │   └── mqtt.ts               # MQTT broker config
+|   |   |   └── syncDatabase.ts
 │   │   ├── controllers/              # Route handlers
 │   │   │   ├── authController.ts     # Auth operations
 │   │   │   ├── entryController.ts    # Entry logging
@@ -333,26 +459,28 @@ LENS---Backend/
 │   │   │   └── validator.ts          # Input validation
 │   │   ├── models/                   # Sequelize models
 │   │   │   ├── Admin.ts              # Admin user model
-│   │   │   ├── User.ts               # Student/Faculty model
-│   │   │   ├── Entry.ts              # Entry log model
-│   │   │   └── RFIDCard.ts           # RFID card model
+│   │   │   ├── AuditLog.ts           
+│   │   │   ├── EntryLog.ts           # Entry log model
+│   │   │   └── User.ts               
 │   │   ├── routes/                   # API routes
 │   │   │   ├── authRoutes.ts         # Auth endpoints
 │   │   │   ├── entryRoutes.ts        # Entry endpoints
-│   │   │   ├── rfidRoutes.ts         # RFID endpoints
-│   │   │   └── userRoutes.ts         # User endpoints
 │   │   ├── services/                 # Business logic
+|   |   |   ├── auditService.ts
 │   │   │   ├── hardwareService.ts    # RFID hardware control
 │   │   │   ├── notificationService.ts # Notifications
 │   │   │   └── reportService.ts      # Reporting
 │   │   ├── utils/                    # Utility functions
 │   │   │   ├── helpers.ts            # Helper functions
+|   |   |   ├── jwt.ts
 │   │   │   ├── logger.ts             # Logging
 │   │   │   └── response.ts           # Response formatting
 │   │   └── app.ts                    # Express app setup
 │   ├── scripts/                      # Utility scripts
 │   │   ├── createTables.ts           # Database table creation
+|   |   ├── createUserTables.ts
 │   │   ├── seedAdmin.ts              # Admin account seeding
+|   |   ├── seedUsers.ts
 │   │   └── syncDatabase.ts           # Database sync
 │   └── test/                         # Test files
 ├── package.json                      # Dependencies
