@@ -4,6 +4,8 @@ import sequelize from '../src/config/database';
 import Admin from '../src/models/Admin';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import AuditLog from '../src/models/AuditLog';
+import EntryLog from '../src/models/EntryLog';
+import User from '../src/models/User';
 import { testConnection } from '../src/config/database';
 
 dotenv.config();
