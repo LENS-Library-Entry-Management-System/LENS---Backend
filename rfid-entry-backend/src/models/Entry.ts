@@ -1,1 +1,0 @@
-// Entry log schema
