@@ -5,6 +5,8 @@ import { testConnection } from "./rfid-entry-backend/src/config/database";
 // import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
 import { testRedisConnection } from "./rfid-entry-backend/src/config/redis";
 import authRoutes from "./rfid-entry-backend/src/routes/authRoutes";
+import EntryRoutes from './rfid-entry-backend/src/routes/entryRoutes'
+import publicRoutes from './rfid-entry-backend/src/routes/publicRoutes';
 
 dotenv.config();
 
@@ -27,8 +29,12 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Public routes (no auth required)
+app.use('/api', publicRoutes);
+
 // Routes
-app.use("/api/auth", authRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/entries', EntryRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {
