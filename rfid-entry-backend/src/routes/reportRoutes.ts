@@ -5,6 +5,7 @@ import {
   getMonthlyReport,
   getCustomReport,
   generateReport,
+  exportEntryById,
 } from '../controllers/reportController';
 import { authenticate } from '../middleware/auth';
 
@@ -19,5 +20,6 @@ router.get('/weekly', getWeeklyReport);
 router.get('/monthly', getMonthlyReport);
 router.get('/custom', getCustomReport);
 router.post('/generate', generateReport);
+router.get('/export/:id', exportEntryById);
 
 export default router;

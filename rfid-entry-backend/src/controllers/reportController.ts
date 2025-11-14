@@ -1,13 +1,18 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
 import EntryLog from '../models/EntryLog';
 import User from '../models/User';
 import { logAuditAction } from '../services/auditService';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 // GET /api/reports/daily - Daily report
-export const getDailyReport = async (_req: Request, res: Response): Promise<void> => {
+export const getDailyReport = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (!req.admin) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const today = new Date();
     const startDate = startOfDay(today);
     const endDate = endOfDay(today);
@@ -19,33 +24,18 @@ export const getDailyReport = async (_req: Request, res: Response): Promise<void
         },
         status: 'success',
       },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department'],
-        },
-      ],
+      include: [{ model: User, as: 'user' }],
       order: [['entryTimestamp', 'DESC']],
     });
 
-    const stats = {
-      totalEntries: entries.length,
-      students: entries.filter((e) => e.user?.userType === 'student').length,
-      faculty: entries.filter((e) => e.user?.userType === 'faculty').length,
-      byCollege: {} as Record<string, number>,
-      byHour: {} as Record<string, number>,
-    };
+    const stats = generateStats(entries);
 
-    // Group by college
-    entries.forEach((entry) => {
-      const college = entry.user?.college || 'Unknown';
-      stats.byCollege[college] = (stats.byCollege[college] || 0) + 1;
-
-      // Group by hour
-      const hour = new Date(entry.entryTimestamp).getHours();
-      const hourKey = `${hour}:00`;
-      stats.byHour[hourKey] = (stats.byHour[hourKey] || 0) + 1;
+    await logAuditAction({
+      admin_id: req.admin.adminId,
+      action_type: 'view',
+      target_table: 'reports',
+      description: 'Viewed daily report',
+      ip_address: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -54,7 +44,7 @@ export const getDailyReport = async (_req: Request, res: Response): Promise<void
         reportType: 'daily',
         date: today.toISOString().split('T')[0],
         stats,
-        entries: entries.slice(0, 100), // Limit to 100 for response size
+        entries,
       },
     });
   } catch (error) {
@@ -68,11 +58,16 @@ export const getDailyReport = async (_req: Request, res: Response): Promise<void
 };
 
 // GET /api/reports/weekly - Weekly report
-export const getWeeklyReport = async (_req: Request, res: Response): Promise<void> => {
+export const getWeeklyReport = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (!req.admin) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const today = new Date();
-    const startDate = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-    const endDate = endOfWeek(today, { weekStartsOn: 1 });
+    const startDate = startOfWeek(today, { weekStartsOn: 0 });
+    const endDate = endOfWeek(today, { weekStartsOn: 0 });
 
     const entries = await EntryLog.findAll({
       where: {
@@ -81,36 +76,19 @@ export const getWeeklyReport = async (_req: Request, res: Response): Promise<voi
         },
         status: 'success',
       },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department'],
-        },
-      ],
+      include: [{ model: User, as: 'user' }],
       order: [['entryTimestamp', 'DESC']],
     });
 
-    const stats = {
-      totalEntries: entries.length,
-      students: entries.filter((e) => e.user?.userType === 'student').length,
-      faculty: entries.filter((e) => e.user?.userType === 'faculty').length,
-      byCollege: {} as Record<string, number>,
-      byDay: {} as Record<string, number>,
-      dailyAverage: 0,
-    };
+    const stats = generateStats(entries);
 
-    // Group by college
-    entries.forEach((entry) => {
-      const college = entry.user?.college || 'Unknown';
-      stats.byCollege[college] = (stats.byCollege[college] || 0) + 1;
-
-      // Group by day
-      const day = new Date(entry.entryTimestamp).toLocaleDateString('en-US', { weekday: 'short' });
-      stats.byDay[day] = (stats.byDay[day] || 0) + 1;
+    await logAuditAction({
+      admin_id: req.admin.adminId,
+      action_type: 'view',
+      target_table: 'reports',
+      description: 'Viewed weekly report',
+      ip_address: req.ip || req.socket.remoteAddress || null,
     });
-
-    stats.dailyAverage = Math.round(entries.length / 7);
 
     res.json({
       success: true,
@@ -119,6 +97,7 @@ export const getWeeklyReport = async (_req: Request, res: Response): Promise<voi
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
         stats,
+        entries,
       },
     });
   } catch (error) {
@@ -132,8 +111,13 @@ export const getWeeklyReport = async (_req: Request, res: Response): Promise<voi
 };
 
 // GET /api/reports/monthly - Monthly report
-export const getMonthlyReport = async (_req: Request, res: Response): Promise<void> => {
+export const getMonthlyReport = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (!req.admin) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const today = new Date();
     const startDate = startOfMonth(today);
     const endDate = endOfMonth(today);
@@ -145,61 +129,29 @@ export const getMonthlyReport = async (_req: Request, res: Response): Promise<vo
         },
         status: 'success',
       },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department'],
-        },
-      ],
+      include: [{ model: User, as: 'user' }],
       order: [['entryTimestamp', 'DESC']],
     });
 
-    const stats = {
-      totalEntries: entries.length,
-      students: entries.filter((e) => e.user?.userType === 'student').length,
-      faculty: entries.filter((e) => e.user?.userType === 'faculty').length,
-      byCollege: {} as Record<string, number>,
-      byDepartment: {} as Record<string, number>,
-      dailyAverage: 0,
-      peakDay: '',
-      peakDayCount: 0,
-    };
+    const stats = generateStats(entries);
 
-    const dayCount: Record<string, number> = {};
-
-    // Group by college and department
-    entries.forEach((entry) => {
-      const college = entry.user?.college || 'Unknown';
-      const department = entry.user?.department || 'Unknown';
-      stats.byCollege[college] = (stats.byCollege[college] || 0) + 1;
-      stats.byDepartment[department] = (stats.byDepartment[department] || 0) + 1;
-
-      // Track daily counts for peak day
-      const day = new Date(entry.entryTimestamp).toISOString().split('T')[0];
-      dayCount[day] = (dayCount[day] || 0) + 1;
-    });
-
-    // Calculate daily average
-    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    stats.dailyAverage = Math.round(entries.length / daysInMonth);
-
-    // Find peak day
-    Object.entries(dayCount).forEach(([day, count]) => {
-      if (count > stats.peakDayCount) {
-        stats.peakDay = day;
-        stats.peakDayCount = count;
-      }
+    await logAuditAction({
+      admin_id: req.admin.adminId,
+      action_type: 'view',
+      target_table: 'reports',
+      description: 'Viewed monthly report',
+      ip_address: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
       success: true,
       data: {
         reportType: 'monthly',
-        month: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        month: today.toLocaleString('default', { month: 'long', year: 'numeric' }),
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
         stats,
+        entries,
       },
     });
   } catch (error) {
@@ -215,27 +167,32 @@ export const getMonthlyReport = async (_req: Request, res: Response): Promise<vo
 // GET /api/reports/custom - Custom date range report
 export const getCustomReport = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (!req.admin) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const { startDate, endDate, college, department, userType } = req.query;
 
     if (!startDate || !endDate) {
       res.status(400).json({
         success: false,
-        message: 'Start date and end date are required',
+        message: 'startDate and endDate are required',
       });
       return;
     }
 
-    const start = startOfDay(new Date(startDate as string));
-    const end = endOfDay(new Date(endDate as string));
-
-    const where: any = {
+    const where: WhereOptions = {
       entryTimestamp: {
-        [Op.between]: [start, end],
+        [Op.between]: [
+          startOfDay(new Date(startDate as string)),
+          endOfDay(new Date(endDate as string)),
+        ],
       },
       status: 'success',
     };
 
-    const userWhere: any = {};
+    const userWhere: WhereOptions = {};
     if (college) userWhere.college = college;
     if (department) userWhere.department = department;
     if (userType) userWhere.userType = userType;
@@ -253,29 +210,25 @@ export const getCustomReport = async (req: Request, res: Response): Promise<void
       order: [['entryTimestamp', 'DESC']],
     });
 
-    const stats = {
-      totalEntries: entries.length,
-      students: entries.filter((e) => e.user?.userType === 'student').length,
-      faculty: entries.filter((e) => e.user?.userType === 'faculty').length,
-      byCollege: {} as Record<string, number>,
-      byDepartment: {} as Record<string, number>,
-    };
+    const stats = generateStats(entries);
 
-    entries.forEach((entry) => {
-      const college = entry.user?.college || 'Unknown';
-      const department = entry.user?.department || 'Unknown';
-      stats.byCollege[college] = (stats.byCollege[college] || 0) + 1;
-      stats.byDepartment[department] = (stats.byDepartment[department] || 0) + 1;
+    await logAuditAction({
+      admin_id: req.admin.adminId,
+      action_type: 'view',
+      target_table: 'reports',
+      description: `Viewed custom report (${startDate} to ${endDate})`,
+      ip_address: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
       success: true,
       data: {
         reportType: 'custom',
-        startDate: start.toISOString().split('T')[0],
-        endDate: end.toISOString().split('T')[0],
+        startDate,
+        endDate,
         filters: { college, department, userType },
         stats,
+        entries,
       },
     });
   } catch (error) {
@@ -292,34 +245,63 @@ export const getCustomReport = async (req: Request, res: Response): Promise<void
 export const generateReport = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
-      res.status(401).json({
-        success: false,
-        message: 'Unauthorized',
-      });
+      res.status(401).json({ success: false, message: 'Unauthorized' });
       return;
     }
 
     const { reportType, startDate, endDate, format = 'csv', college, department, userType } = req.body;
 
-    if (!reportType || !startDate || !endDate) {
+    if (!reportType) {
       res.status(400).json({
         success: false,
-        message: 'Report type, start date, and end date are required',
+        message: 'reportType is required',
       });
       return;
     }
 
-    const start = startOfDay(new Date(startDate));
-    const end = endOfDay(new Date(endDate));
+    let start: Date;
+    let end: Date;
 
-    const where: any = {
+    switch (reportType) {
+      case 'daily':
+        start = startOfDay(new Date());
+        end = endOfDay(new Date());
+        break;
+      case 'weekly':
+        start = startOfWeek(new Date(), { weekStartsOn: 0 });
+        end = endOfWeek(new Date(), { weekStartsOn: 0 });
+        break;
+      case 'monthly':
+        start = startOfMonth(new Date());
+        end = endOfMonth(new Date());
+        break;
+      case 'custom':
+        if (!startDate || !endDate) {
+          res.status(400).json({
+            success: false,
+            message: 'startDate and endDate are required for custom reports',
+          });
+          return;
+        }
+        start = startOfDay(new Date(startDate));
+        end = endOfDay(new Date(endDate));
+        break;
+      default:
+        res.status(400).json({
+          success: false,
+          message: 'Invalid reportType',
+        });
+        return;
+    }
+
+    const where: WhereOptions = {
       entryTimestamp: {
         [Op.between]: [start, end],
       },
       status: 'success',
     };
 
-    const userWhere: any = {};
+    const userWhere: WhereOptions = {};
     if (college) userWhere.college = college;
     if (department) userWhere.department = department;
     if (userType) userWhere.userType = userType;
@@ -334,40 +316,43 @@ export const generateReport = async (req: Request, res: Response): Promise<void>
           required: Object.keys(userWhere).length > 0,
         },
       ],
-      order: [['entryTimestamp', 'ASC']],
+      order: [['entryTimestamp', 'DESC']],
     });
 
     if (format === 'csv') {
       const csv = [
-        'Log ID,Date,Time,ID Number,Name,User Type,College,Department,Year Level,Entry Method',
+        'Log ID,Date,Time,ID Number,Name,User Type,College,Department,Year Level,Entry Method,Status',
         ...entries.map((e) => {
-          const timestamp = new Date(e.entryTimestamp);
+          const date = new Date(e.entryTimestamp);
           return [
             e.logId,
-            timestamp.toLocaleDateString(),
-            timestamp.toLocaleTimeString(),
+            date.toLocaleDateString(),
+            date.toLocaleTimeString(),
             e.user?.idNumber || '',
             `"${e.user?.firstName} ${e.user?.lastName}"`,
             e.user?.userType || '',
             e.user?.college || '',
             e.user?.department || '',
-            e.user?.yearLevel || 'N/A',
+            e.user?.yearLevel || '',
             e.entryMethod,
+            e.status,
           ].join(',');
         }),
       ].join('\n');
 
-      // Log audit action
       await logAuditAction({
         admin_id: req.admin.adminId,
         action_type: 'export',
-        target_table: 'entry_logs',
+        target_table: 'reports',
         description: `Generated ${reportType} report (${entries.length} entries)`,
         ip_address: req.ip || req.socket.remoteAddress || null,
       });
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=report_${reportType}_${Date.now()}.csv`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=report_${reportType}_${Date.now()}.csv`
+      );
       res.send(csv);
     } else {
       res.status(400).json({
@@ -383,4 +368,101 @@ export const generateReport = async (req: Request, res: Response): Promise<void>
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
+};
+
+// GET /api/reports/export/:id - Export specific entry log by ID
+export const exportEntryById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.admin) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
+    const { id } = req.params;
+
+    const entry = await EntryLog.findByPk(id, {
+      include: [{ model: User, as: 'user' }],
+    });
+
+    if (!entry) {
+      res.status(404).json({
+        success: false,
+        message: 'Entry not found',
+      });
+      return;
+    }
+
+    const date = new Date(entry.entryTimestamp);
+    const csv = [
+      'Log ID,Date,Time,ID Number,Name,User Type,College,Department,Year Level,Entry Method,Status',
+      [
+        entry.logId,
+        date.toLocaleDateString(),
+        date.toLocaleTimeString(),
+        entry.user?.idNumber || '',
+        `"${entry.user?.firstName} ${entry.user?.lastName}"`,
+        entry.user?.userType || '',
+        entry.user?.college || '',
+        entry.user?.department || '',
+        entry.user?.yearLevel || '',
+        entry.entryMethod,
+        entry.status,
+      ].join(','),
+    ].join('\n');
+
+    await logAuditAction({
+      admin_id: req.admin.adminId,
+      action_type: 'export',
+      target_table: 'entry_logs',
+      target_id: entry.logId,
+      description: `Exported entry log ID ${id}`,
+      ip_address: req.ip || req.socket.remoteAddress || null,
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=entry_${id}_${Date.now()}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Export entry by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export entry',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
+
+const generateStats = (entries: EntryLog[]) => {
+  const byCollege: Record<string, number> = {};
+  const byDepartment: Record<string, number> = {};
+  const byHour: Record<string, number> = {};
+  let students = 0;
+  let faculty = 0;
+
+  entries.forEach((entry) => {
+    if (entry.user) {
+
+      if (entry.user.userType === 'student') students++;
+      if (entry.user.userType === 'faculty') faculty++;
+
+      const college = entry.user.college;
+      byCollege[college] = (byCollege[college] || 0) + 1;
+
+      const department = entry.user.department;
+      byDepartment[department] = (byDepartment[department] || 0) + 1;
+    }
+
+    const hour = new Date(entry.entryTimestamp).getHours();
+    const hourKey = `${hour}:00`;
+    byHour[hourKey] = (byHour[hourKey] || 0) + 1;
+  });
+
+  return {
+    totalEntries: entries.length,
+    students,
+    faculty,
+    byCollege,
+    byDepartment,
+    byHour,
+  };
 };
