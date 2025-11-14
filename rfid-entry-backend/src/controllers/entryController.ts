@@ -124,10 +124,10 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
 
     // Log audit action
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'edit',
-      target_table: 'entry_logs',
-      target_id: entry.logId,
+      adminId: req.admin.adminId,
+      actionType: 'edit',
+      targetTable: 'entry_logs',
+      targetId: entry.logId,
       description: JSON.stringify({
         old: oldValues,
         new: {
@@ -136,7 +136,7 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
           status: entry.status,
         },
       }),
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -183,10 +183,10 @@ export const deleteEntry = async (req: Request, res: Response): Promise<void> =>
 
     // Log audit action
     await logAuditAction({
-      admin_id: req.admin.adminId,
-      action_type: 'delete',
-      target_table: 'entry_logs',
-      target_id: parseInt(id),
+      adminId: req.admin.adminId,
+      actionType: 'delete',
+      targetTable: 'entry_logs',
+      targetId: parseInt(id),
       description: JSON.stringify({
         deletedEntry: {
           userId: entry.userId,
@@ -194,7 +194,7 @@ export const deleteEntry = async (req: Request, res: Response): Promise<void> =>
           entryMethod: entry.entryMethod,
         },
       }),
-      ip_address: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
@@ -400,11 +400,11 @@ export const exportEntries = async (req: Request, res: Response): Promise<void> 
 
       // Log export action
       await logAuditAction({
-        admin_id: req.admin.adminId,
-        action_type: 'export',
-        target_table: 'entry_logs',
+        adminId: req.admin.adminId,
+        actionType: 'export',
+        targetTable: 'entry_logs',
         description: `Exported ${entries.length} entries as CSV`,
-        ip_address: req.ip || req.socket.remoteAddress || null,
+        ipAddress: req.ip || req.socket.remoteAddress || null,
       });
 
       res.setHeader('Content-Type', 'text/csv');
