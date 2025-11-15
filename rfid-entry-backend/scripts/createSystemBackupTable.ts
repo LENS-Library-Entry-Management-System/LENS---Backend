@@ -46,7 +46,8 @@ const createSystemBackupTable = async () => {
         size_mb DECIMAL(10, 2) NOT NULL,
         status backup_status NOT NULL DEFAULT 'completed',
         backup_type backup_type NOT NULL DEFAULT 'full',
-        description TEXT
+        description TEXT,
+        deleted_at TIMESTAMP NULL
       );
     `);
 

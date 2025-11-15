@@ -11,6 +11,7 @@ interface SystemBackupAttributes {
   status: 'completed' | 'failed';
   backupType: 'full' | 'users' | 'entries' | 'admins';
   description: string | null;
+  deletedAt: Date | null;
 }
 
 interface SystemBackupCreationAttributes extends Optional<SystemBackupAttributes, 'backupId' | 'description'> {}
@@ -24,6 +25,7 @@ class SystemBackup extends Model<SystemBackupAttributes, SystemBackupCreationAtt
   public status!: 'completed' | 'failed';
   public backupType!: 'full' | 'users' | 'entries' | 'admins';
   public description!: string | null;
+  public deletedAt!: Date | null;
 
   // Association
   public readonly admin?: Admin;
@@ -72,6 +74,12 @@ SystemBackup.init(
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+      field: 'deleted_at',
     },
   },
   {
