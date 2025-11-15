@@ -10,6 +10,7 @@ import publicRoutes from './rfid-entry-backend/src/routes/publicRoutes';
 import userRoutes from './rfid-entry-backend/src/routes/userRoutes';
 import analyticsRoutes from './rfid-entry-backend/src/routes/analyticsRoutes';
 import auditRoutes from './rfid-entry-backend/src/routes/auditRoutes';
+import reportRoutes from './rfid-entry-backend/src/routes/reportRoutes';
 
 dotenv.config();
 
@@ -32,7 +33,10 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Routes (authenticated routes first)
+// Public routes (no auth required) - mount first to avoid conflicts with authenticated routes
+app.use('/api', publicRoutes);
+
+// Routes (authenticated routes after public ones)
 app.use('/api/auth', authRoutes);
 app.use('/api/entries', EntryRoutes);
 app.use('/api/users', userRoutes);
@@ -40,9 +44,7 @@ app.use('/api/users', userRoutes);
 // Analytics routes (dashboard + analytics endpoints)
 app.use('/api', analyticsRoutes);
 app.use('/api/audit-logs', auditRoutes);
-
-// Public routes (no auth required) - mount after authenticated routes to avoid conflicts
-app.use('/api', publicRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {
