@@ -92,7 +92,15 @@ const keyGenerator = (req: Request) => {
   if (req.admin?.adminId) {
     return `user:${req.admin.adminId}`;
   }
-  return `ip:${req.ip || req.socket.remoteAddress || "unknown"}`;
+  // Use the ipKeyGenerator helper for proper IPv6 support
+  const forwarded = req.headers['x-forwarded-for'] as string;
+  const ip = forwarded ? forwarded.split(',')[0].trim() : req.ip || req.socket.remoteAddress || "unknown";
+
+  // Normalize IPv4 addresses to IPv6 format for consistent hashing
+  if (ip.includes('.')) {
+    return `ip::ffff:${ip}`;
+  }
+  return `ip:${ip}`;
 };
 
 const rateLimitHandler = (req: Request, res: Response) => {
