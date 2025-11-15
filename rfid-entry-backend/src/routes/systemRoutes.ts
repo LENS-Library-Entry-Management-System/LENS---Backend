@@ -3,7 +3,6 @@ import {
   createBackup,
   getBackups,
   restoreBackup,
-  removeBackup,
   getSystemHealth,
   optimizeDatabase,
   getSystemLogs,
@@ -23,7 +22,6 @@ router.use(authorize('super_admin'));
 router.post('/backup', createBackup);
 router.get('/backups', getBackups);
 router.post('/restore/:id', restoreBackup);
-router.delete('/backups/:id', removeBackup);
 
 // System Maintenance
 router.post('/optimize', optimizeDatabase);

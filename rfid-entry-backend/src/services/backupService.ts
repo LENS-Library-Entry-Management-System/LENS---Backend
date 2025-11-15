@@ -229,27 +229,12 @@ export const createFullBackup = async (adminId: number): Promise<SystemBackup> =
   }
 };
 
-// List all backups (including soft-deleted to show deletedAt and restoreAt fields)
+// List all backups
 export const listBackups = async (): Promise<SystemBackup[]> => {
   return await SystemBackup.findAll({
     include: [{ model: Admin, as: 'admin', attributes: ['username', 'fullName'] }],
     order: [['backupDate', 'DESC']],
   });
-};
-
-// Delete backup (soft delete)
-export const deleteBackup = async (backupId: number): Promise<boolean> => {
-  const backup = await SystemBackup.findByPk(backupId);
-
-  if (!backup) {
-    throw new Error('Backup not found');
-  }
-
-  // Soft delete: mark as deleted instead of removing files and record
-  backup.deletedAt = new Date();
-  await backup.save();
-
-  return true;
 };
 
 // Get backup path

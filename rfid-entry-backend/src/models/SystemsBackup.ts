@@ -11,7 +11,6 @@ interface SystemBackupAttributes {
   status: 'completed' | 'failed';
   backupType: 'full' | 'users' | 'entries' | 'admins';
   description: string | null;
-  deletedAt: Date | null;
   restoreAt: Date | null;
 }
 
@@ -26,7 +25,6 @@ class SystemBackup extends Model<SystemBackupAttributes, SystemBackupCreationAtt
   public status!: 'completed' | 'failed';
   public backupType!: 'full' | 'users' | 'entries' | 'admins';
   public description!: string | null;
-  public deletedAt!: Date | null;
   public restoreAt!: Date | null;
 
   // Association
@@ -77,12 +75,7 @@ SystemBackup.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    deletedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
-      field: 'deleted_at',
-    },
+
     restoreAt: {
       type: DataTypes.DATE,
       allowNull: true,

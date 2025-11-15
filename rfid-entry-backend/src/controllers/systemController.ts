@@ -5,7 +5,6 @@ import {
   backupEntryLogs,
   backupAdmins,
   listBackups,
-  deleteBackup,
   getBackupPath,
   ensureBackupDirectory
 } from '../services/backupService';
@@ -211,45 +210,7 @@ export const restoreBackup = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// DELETE /api/system/backups/:id - Delete backup
-export const removeBackup = async (req: Request, res: Response): Promise<void> => {
-  try {
-    if (!req.admin) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
-      return;
-    }
 
-    if (req.admin.role !== 'super_admin') {
-      res.status(403).json({ success: false, message: 'Forbidden: Only super admins can delete backups' });
-      return;
-    }
-
-    const { id } = req.params;
-
-    await deleteBackup(parseInt(id));
-
-    await logAuditAction({
-      adminId: req.admin.adminId,
-      actionType: 'delete',
-      targetTable: 'system_backups',
-      targetId: parseInt(id),
-      description: 'Deleted backup',
-      ipAddress: req.ip || req.socket.remoteAddress || null,
-    });
-
-    res.json({
-      success: true,
-      message: 'Backup deleted successfully',
-    });
-  } catch (error) {
-    console.error('Delete backup error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete backup',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-};
 
 // GET /api/system/health - System health check
 export const getSystemHealth = async (_req: Request, res: Response): Promise<void> => {
