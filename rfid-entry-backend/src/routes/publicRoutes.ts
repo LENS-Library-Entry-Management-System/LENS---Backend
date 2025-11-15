@@ -5,8 +5,12 @@ import {
   validateRfid,
   getUserInfo,
 } from '../controllers/publicController';
+import { apiRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
+
+// Apply rate limiting to all public routes
+router.use(apiRateLimiter);
 
 // Public endpoints - no authentication required
 router.post('/entries/scan', scanEntry);

@@ -7,12 +7,13 @@ import {
   refreshToken,
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
+import { authRateLimiter, refreshTokenRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-// Public routes
-router.post('/login', login);
-router.post('/refresh', refreshToken);
+// Public routes with rate limiting
+router.post('/login', authRateLimiter, login);
+router.post('/refresh', refreshTokenRateLimiter, refreshToken);
 
 // Protected routes
 router.post('/logout', authenticate, logout);

@@ -11,6 +11,7 @@ import userRoutes from './rfid-entry-backend/src/routes/userRoutes';
 import analyticsRoutes from './rfid-entry-backend/src/routes/analyticsRoutes';
 import auditRoutes from './rfid-entry-backend/src/routes/auditRoutes';
 import reportRoutes from './rfid-entry-backend/src/routes/reportRoutes';
+import adminRoutes from './rfid-entry-backend/src/routes/adminRoutes';
 
 dotenv.config();
 
@@ -45,6 +46,9 @@ app.use('/api/users', userRoutes);
 app.use('/api', analyticsRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/reports', reportRoutes);
+
+// Admin routes
+app.use('/api/admins', adminRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {
