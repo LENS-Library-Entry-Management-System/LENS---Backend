@@ -16,21 +16,21 @@ export const ensureBackupDirectory = (): void => {
 };
 
 // Convert array to CSV
-const arrayToCSV = (data: any[], headers: string[]): string => {
+const arrayToCSV = (data: unknown[], headers: string[]): string => {
   const rows = [headers.join(',')];
-  
+
   data.forEach((item) => {
     const values = headers.map((header) => {
-      const value = item[header];
+      const value = (item as Record<string, unknown>)[header];
       if (value === null || value === undefined) return '';
       if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
         return `"${value.replace(/"/g, '""')}"`;
       }
-      return value;
+      return String(value);
     });
     rows.push(values.join(','));
   });
-  
+
   return rows.join('\n');
 };
 
@@ -78,15 +78,15 @@ export const backupEntryLogs = async (): Promise<{ filePath: string; sizeMb: num
   const fileName = `entry_logs_backup_${timestamp}.csv`;
   const filePath = path.join(BACKUP_BASE_PATH, fileName);
   
-  const formattedData = entries.map((entry: any) => ({
-    log_id: entry.logId,
-    user_id: entry.userId,
-    id_number: entry.user?.idNumber || '',
-    user_name: `${entry.user?.firstName || ''} ${entry.user?.lastName || ''}`.trim(),
-    entry_timestamp: entry.entryTimestamp,
-    entry_method: entry.entryMethod,
-    status: entry.status,
-    created_at: entry.createdAt,
+  const formattedData = entries.map((entry) => ({
+    log_id: (entry as unknown as Record<string, unknown>).logId,
+    user_id: (entry as unknown as Record<string, unknown>).userId,
+    id_number: ((entry as unknown as Record<string, unknown>).user as Record<string, unknown>)?.idNumber || '',
+    user_name: `${((entry as unknown as Record<string, unknown>).user as Record<string, unknown>)?.firstName || ''} ${((entry as unknown as Record<string, unknown>).user as Record<string, unknown>)?.lastName || ''}`.trim(),
+    entry_timestamp: (entry as unknown as Record<string, unknown>).entryTimestamp,
+    entry_method: (entry as unknown as Record<string, unknown>).entryMethod,
+    status: (entry as unknown as Record<string, unknown>).status,
+    created_at: (entry as unknown as Record<string, unknown>).createdAt,
   }));
   
   const headers = ['log_id', 'user_id', 'id_number', 'user_name', 'entry_timestamp', 'entry_method', 'status', 'created_at'];
@@ -136,17 +136,17 @@ export const backupAuditLogs = async (): Promise<{ filePath: string; sizeMb: num
   const fileName = `audit_logs_backup_${timestamp}.csv`;
   const filePath = path.join(BACKUP_BASE_PATH, fileName);
   
-  const formattedData = auditLogs.map((log: any) => ({
-    audit_id: log.auditId,
-    admin_id: log.adminId,
-    admin_username: log.admin?.username || '',
-    admin_name: log.admin?.fullName || '',
-    action_type: log.actionType,
-    target_table: log.targetTable || '',
-    target_id: log.targetId || '',
-    description: log.description || '',
-    timestamp: log.timestamp,
-    ip_address: log.ipAddress || '',
+  const formattedData = auditLogs.map((log) => ({
+    audit_id: (log as unknown as Record<string, unknown>).auditId,
+    admin_id: (log as unknown as Record<string, unknown>).adminId,
+    admin_username: ((log as unknown as Record<string, unknown>).admin as Record<string, unknown>)?.username || '',
+    admin_name: ((log as unknown as Record<string, unknown>).admin as Record<string, unknown>)?.fullName || '',
+    action_type: (log as unknown as Record<string, unknown>).actionType,
+    target_table: (log as unknown as Record<string, unknown>).targetTable || '',
+    target_id: (log as unknown as Record<string, unknown>).targetId || '',
+    description: (log as unknown as Record<string, unknown>).description || '',
+    timestamp: (log as unknown as Record<string, unknown>).timestamp,
+    ip_address: (log as unknown as Record<string, unknown>).ipAddress || '',
   }));
   
   const headers = ['audit_id', 'admin_id', 'admin_username', 'admin_name', 'action_type', 'target_table', 'target_id', 'description', 'timestamp', 'ip_address'];
