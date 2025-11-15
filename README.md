@@ -15,10 +15,14 @@ LENS (Library Entry Notation System) modernizes library access management by aut
 - **Automated ID Scanning**: RFID-based entry logging with duplicate detection
 - **Real-time Entry Monitoring**: Live tracking of library entries
 - **Secure Authentication**: JWT-based admin authentication with role-based access control
-- **User Management**: Comprehensive student and faculty record management
-- **Audit Logging**: Complete trail of all administrative actions
-- **Data Export**: CSV export functionality for reporting
+- **User Management**: Comprehensive student and faculty record management (CRUD operations)
+- **Audit Logging**: Complete trail of all administrative actions with detailed tracking
+- **Analytics & Dashboard**: Real-time statistics, peak hours analysis, and entry trends
+- **Reports**: Daily, weekly, monthly, and custom date-range reports with CSV export
+- **User Search**: Advanced user search and filtering capabilities
+- **Data Export**: CSV export functionality for reporting and individual entry logs
 - **MQTT Integration**: Hardware integration support for RFID scanners
+- **Redis Caching**: Performance optimization with Redis for session management
 - **Self-hosted Database**: Complete data control with PostgreSQL
 
 ---
@@ -32,7 +36,7 @@ LENS (Library Entry Notation System) modernizes library access management by aut
 - **ORM**: Sequelize
 - **Authentication**: JWT (JSON Web Tokens)
 - **Password Hashing**: bcryptjs
-- **Other**: MQTT for hardware integration, CORS enabled
+- **Other**: MQTT for hardware integration, Redis for caching, CORS enabled
 
 ---
 
@@ -102,6 +106,11 @@ CORS_ORIGIN=http://localhost:3000
 # MQTT (optional)
 MQTT_BROKER_URL=mqtt://localhost:1883
 MQTT_TOPIC_SCAN=/rfid/scan
+
+# Redis (optional)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=changeme
 ```
 
 ### Database Setup (Docker)
@@ -633,6 +642,772 @@ Log ID,User ID,ID Number,Full Name,Entry Time,Method,Status,User Type,College
 
 ---
 
+## User Management Endpoints (Protected)
+
+All endpoints require authentication header:
+```
+Authorization: Bearer <accessToken>
+```
+
+### GET /users
+**Description**: Get all users with pagination and filtering
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Records per page (default: 50)
+- `userType` (optional): Filter by user type ('student', 'faculty', 'staff')
+- `status` (optional): Filter by status ('active', 'inactive')
+
+**Example**: `GET /users?page=1&limit=50&userType=student&status=active`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "users": [
+      {
+        "userId": 1,
+        "idNumber": "2021-0001",
+        "rfidTag": "RFID001",
+        "firstName": "Juan",
+        "lastName": "Dela Cruz",
+        "email": "juan.delacruz@ustp.edu.ph",
+        "userType": "student",
+        "college": "CCS",
+        "department": "Computer Science",
+        "yearLevel": "4",
+        "status": "active",
+        "createdAt": "2025-01-01T00:00:00Z",
+        "updatedAt": "2025-01-01T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "total": 100,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+---
+
+### POST /users
+**Description**: Create a new user
+
+**Request Body**:
+```json
+{
+  "idNumber": "2021-0003",
+  "rfidTag": "RFID003",
+  "firstName": "Pedro",
+  "lastName": "Reyes",
+  "email": "pedro.reyes@ustp.edu.ph",
+  "userType": "student",
+  "college": "College of Engineering",
+  "department": "Electrical Engineering",
+  "yearLevel": "3",
+  "status": "active"
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "success": true,
+  "message": "User created successfully",
+  "data": {
+    "userId": 3,
+    "idNumber": "2021-0003",
+    "rfidTag": "RFID003",
+    "firstName": "Pedro",
+    "lastName": "Reyes",
+    "email": "pedro.reyes@ustp.edu.ph",
+    "userType": "student",
+    "college": "College of Engineering",
+    "department": "Electrical Engineering",
+    "yearLevel": "3",
+    "status": "active",
+    "createdAt": "2025-11-14T10:30:00Z",
+    "updatedAt": "2025-11-14T10:30:00Z"
+  }
+}
+```
+
+---
+
+### GET /users/:id
+**Description**: Get user details by ID
+
+**Parameters**:
+- `id` (path): User ID (numeric)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "userId": 1,
+      "idNumber": "2021-0001",
+      "rfidTag": "RFID001",
+      "firstName": "Juan",
+      "lastName": "Dela Cruz",
+      "email": "juan.delacruz@ustp.edu.ph",
+      "userType": "student",
+      "college": "CCS",
+      "department": "Computer Science",
+      "yearLevel": "4",
+      "status": "active",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-01T00:00:00Z"
+    },
+    "stats": {
+      "totalEntries": 25,
+      "entriesToday": 1
+    }
+  }
+}
+```
+
+---
+
+### PUT /users/:id
+**Description**: Update user information
+
+**Parameters**:
+- `id` (path): User ID (numeric)
+
+**Request Body**:
+```json
+{
+  "firstName": "Juan Carlos",
+  "email": "juancarlos.delacruz@ustp.edu.ph",
+  "department": "Information Technology",
+  "yearLevel": "4"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "User updated successfully",
+  "data": {
+    "userId": 1,
+    "idNumber": "2021-0001",
+    "rfidTag": "RFID001",
+    "firstName": "Juan Carlos",
+    "lastName": "Dela Cruz",
+    "email": "juancarlos.delacruz@ustp.edu.ph",
+    "userType": "student",
+    "college": "CCS",
+    "department": "Information Technology",
+    "yearLevel": "4",
+    "status": "active",
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-11-14T10:30:00Z"
+  }
+}
+```
+
+---
+
+### DELETE /users/:id
+**Description**: Delete a user
+
+**Parameters**:
+- `id` (path): User ID (numeric)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "User deleted successfully"
+}
+```
+
+---
+
+### GET /users/search
+**Description**: Search users by various criteria
+
+**Query Parameters**:
+- `q` (required): Search query (name, ID number, RFID tag, email)
+- `userType` (optional): Filter by user type
+- `college` (optional): Filter by college
+- `department` (optional): Filter by department
+- `status` (optional): Filter by status
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Records per page (default: 50)
+
+**Example**: `GET /users/search?q=Juan&userType=student&page=1&limit=20`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "users": [
+      {
+        "userId": 1,
+        "idNumber": "2021-0001",
+        "rfidTag": "RFID001",
+        "firstName": "Juan",
+        "lastName": "Dela Cruz",
+        "email": "juan.delacruz@ustp.edu.ph",
+        "userType": "student",
+        "college": "CCS",
+        "department": "Computer Science",
+        "yearLevel": "4",
+        "status": "active",
+        "createdAt": "2025-01-01T00:00:00Z",
+        "updatedAt": "2025-01-01T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "total": 1,
+      "page": 1,
+      "limit": 20,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+---
+
+## Analytics & Dashboard Endpoints (Protected)
+
+All endpoints require authentication header:
+```
+Authorization: Bearer <accessToken>
+```
+
+### GET /dashboard/stats
+**Description**: Get overall dashboard statistics
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "totalEntries": 1250,
+    "uniqueStudents": 450,
+    "todayEntries": 85,
+    "averageEntriesPerDay": 42
+  }
+}
+```
+
+---
+
+### GET /analytics/peak-hours
+**Description**: Get peak hours analysis
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "peakHours": [
+      {
+        "hour": 8,
+        "count": 120,
+        "label": "08:00"
+      },
+      {
+        "hour": 9,
+        "count": 150,
+        "label": "09:00"
+      }
+    ],
+    "peakHour": {
+      "hour": 9,
+      "count": 150,
+      "label": "09:00"
+    }
+  }
+}
+```
+
+---
+
+### GET /analytics/trends
+**Description**: Get entry trends over time
+
+**Query Parameters**:
+- `period` (optional): Time period ('7d', '30d', '90d') - default: '30d'
+
+**Example**: `GET /analytics/trends?period=7d`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "period": "30d",
+    "trends": [
+      {
+        "date": "2025-10-15",
+        "count": 45,
+        "label": "Oct 15"
+      },
+      {
+        "date": "2025-10-16",
+        "count": 52,
+        "label": "Oct 16"
+      }
+    ],
+    "totalEntries": 1350
+  }
+}
+```
+
+---
+
+### GET /analytics/by-college
+**Description**: Get entry breakdown by college
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "colleges": [
+      {
+        "college": "College of Computer Studies",
+        "count": 450,
+        "percentage": "36.00"
+      },
+      {
+        "college": "College of Engineering",
+        "count": 380,
+        "percentage": "30.40"
+      }
+    ],
+    "totalEntries": 1250
+  }
+}
+```
+
+---
+
+### GET /analytics/by-department
+**Description**: Get entry breakdown by department
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "departments": [
+      {
+        "department": "Computer Science",
+        "college": "College of Computer Studies",
+        "count": 280,
+        "percentage": "22.40"
+      },
+      {
+        "department": "Information Technology",
+        "college": "College of Computer Studies",
+        "count": 170,
+        "percentage": "13.60"
+      }
+    ],
+    "totalEntries": 1250
+  }
+}
+```
+
+---
+
+## Reports Endpoints (Protected)
+
+All endpoints require authentication header:
+```
+Authorization: Bearer <accessToken>
+```
+
+### GET /reports/daily
+**Description**: Get daily report for current day
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "reportType": "daily",
+    "date": "2025-11-14",
+    "stats": {
+      "totalEntries": 85,
+      "students": 70,
+      "faculty": 15,
+      "byCollege": {
+        "CCS": 45,
+        "COE": 30,
+        "CBA": 10
+      },
+      "byHour": {
+        "08:00": 15,
+        "09:00": 20,
+        "10:00": 25
+      }
+    },
+    "entries": [...]
+  }
+}
+```
+
+---
+
+### GET /reports/weekly
+**Description**: Get weekly report for current week
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "reportType": "weekly",
+    "startDate": "2025-11-10",
+    "endDate": "2025-11-16",
+    "stats": {
+      "totalEntries": 520,
+      "students": 420,
+      "faculty": 100,
+      "byCollege": {
+        "CCS": 250,
+        "COE": 180,
+        "CBA": 90
+      },
+      "byHour": {
+        "08:00": 85,
+        "09:00": 95,
+        "10:00": 110
+      }
+    },
+    "entries": [...]
+  }
+}
+```
+
+---
+
+### GET /reports/monthly
+**Description**: Get monthly report for current month
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "reportType": "monthly",
+    "month": "November 2025",
+    "startDate": "2025-11-01",
+    "endDate": "2025-11-30",
+    "stats": {
+      "totalEntries": 2100,
+      "students": 1680,
+      "faculty": 420,
+      "byCollege": {
+        "CCS": 1050,
+        "COE": 735,
+        "CBA": 315
+      },
+      "byHour": {
+        "08:00": 350,
+        "09:00": 385,
+        "10:00": 420
+      }
+    },
+    "entries": [...]
+  }
+}
+```
+
+---
+
+### GET /reports/custom
+**Description**: Get custom date range report
+
+**Query Parameters**:
+- `startDate` (required): Start date (YYYY-MM-DD)
+- `endDate` (required): End date (YYYY-MM-DD)
+- `college` (optional): Filter by college
+- `department` (optional): Filter by department
+- `userType` (optional): Filter by user type
+
+**Example**: `GET /reports/custom?startDate=2025-11-01&endDate=2025-11-15&college=CCS`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "reportType": "custom",
+    "startDate": "2025-11-01",
+    "endDate": "2025-11-15",
+    "filters": {
+      "college": "CCS"
+    },
+    "stats": {
+      "totalEntries": 1200,
+      "students": 960,
+      "faculty": 240,
+      "byCollege": {
+        "CCS": 1200
+      },
+      "byHour": {
+        "08:00": 200,
+        "09:00": 220,
+        "10:00": 240
+      }
+    },
+    "entries": [...]
+  }
+}
+```
+
+---
+
+### POST /reports/generate
+**Description**: Generate and download report as CSV
+
+**Request Body**:
+```json
+{
+  "reportType": "monthly",
+  "startDate": "2025-11-01",
+  "endDate": "2025-11-30",
+  "format": "csv",
+  "college": "CCS",
+  "department": "Computer Science",
+  "userType": "student"
+}
+```
+
+**Response** (200 OK - CSV File):
+```
+Content-Type: text/csv
+Content-Disposition: attachment; filename=report_monthly_2025-11-14.csv
+
+Log ID,Date,Time,ID Number,Name,User Type,College,Department,Year Level,Entry Method,Status
+1,2025-11-01,08:30:00,2021-0001,Juan Dela Cruz,student,CCS,Computer Science,4,rfid,success
+2,2025-11-01,08:35:00,2021-0002,Maria Santos,student,CCS,Computer Science,4,rfid,success
+```
+
+---
+
+### GET /reports/export/:id
+**Description**: Export specific entry log by ID as CSV
+
+**Parameters**:
+- `id` (path): Entry log ID
+
+**Response** (200 OK - CSV File):
+```
+Content-Type: text/csv
+Content-Disposition: attachment; filename=entry_1_2025-11-14.csv
+
+Log ID,Date,Time,ID Number,Name,User Type,College,Department,Year Level,Entry Method,Status
+1,2025-11-01,08:30:00,2021-0001,Juan Dela Cruz,student,CCS,Computer Science,4,rfid,success
+```
+
+---
+
+## Audit Logging Endpoints (Protected)
+
+All endpoints require authentication header:
+```
+Authorization: Bearer <accessToken>
+```
+
+### GET /audit-logs
+**Description**: Get all audit logs with pagination and filtering
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Records per page (default: 50)
+- `actionType` (optional): Filter by action type
+- `targetTable` (optional): Filter by target table
+- `adminId` (optional): Filter by admin ID
+- `startDate` (optional): Start date filter (YYYY-MM-DD)
+- `endDate` (optional): End date filter (YYYY-MM-DD)
+
+**Example**: `GET /audit-logs?page=1&limit=50&actionType=login&startDate=2025-11-01`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "logs": [
+      {
+        "auditId": 1,
+        "adminId": 1,
+        "actionType": "login",
+        "targetTable": null,
+        "targetId": null,
+        "description": "Admin login",
+        "timestamp": "2025-11-14T08:30:00Z",
+        "ipAddress": "192.168.1.100",
+        "admin": {
+          "adminId": 1,
+          "username": "admin",
+          "fullName": "System Administrator",
+          "role": "super_admin"
+        }
+      }
+    ],
+    "pagination": {
+      "total": 150,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 3
+    }
+  }
+}
+```
+
+---
+
+### GET /audit-logs/:id
+**Description**: Get specific audit log by ID
+
+**Parameters**:
+- `id` (path): Audit log ID
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "auditId": 1,
+    "adminId": 1,
+    "actionType": "login",
+    "targetTable": null,
+    "targetId": null,
+    "description": "Admin login",
+    "timestamp": "2025-11-14T08:30:00Z",
+    "ipAddress": "192.168.1.100",
+    "admin": {
+      "adminId": 1,
+      "username": "admin",
+      "fullName": "System Administrator",
+      "email": "admin@ustp.edu.ph",
+      "role": "super_admin"
+    }
+  }
+}
+```
+
+---
+
+### GET /audit-logs/admin/:adminId
+**Description**: Get audit logs for specific admin
+
+**Parameters**:
+- `adminId` (path): Admin ID
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Records per page (default: 50)
+- `actionType` (optional): Filter by action type
+- `startDate` (optional): Start date filter (YYYY-MM-DD)
+- `endDate` (optional): End date filter (YYYY-MM-DD)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "admin": {
+      "adminId": 1,
+      "username": "admin",
+      "fullName": "System Administrator",
+      "role": "super_admin"
+    },
+    "logs": [...],
+    "stats": {
+      "totalActions": 45,
+      "actionBreakdown": [
+        {
+          "actionType": "login",
+          "count": 15
+        },
+        {
+          "actionType": "view",
+          "count": 20
+        }
+      ]
+    },
+    "pagination": {
+      "total": 45,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+---
+
+### GET /audit-logs/stats
+**Description**: Get audit statistics (Super Admin only)
+
+**Query Parameters**:
+- `startDate` (optional): Start date filter (YYYY-MM-DD)
+- `endDate` (optional): End date filter (YYYY-MM-DD)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "totalActions": 1250,
+    "recentActivity": 45,
+    "actionsByType": [
+      {
+        "actionType": "login",
+        "count": 400
+      },
+      {
+        "actionType": "view",
+        "count": 350
+      },
+      {
+        "actionType": "edit",
+        "count": 300
+      }
+    ],
+    "actionsByAdmin": [
+      {
+        "adminId": 1,
+        "username": "admin",
+        "fullName": "System Administrator",
+        "count": 600
+      }
+    ],
+    "actionsByTable": [
+      {
+        "targetTable": "users",
+        "count": 450
+      },
+      {
+        "targetTable": "entry_logs",
+        "count": 350
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## Database Schema
 
 ### Tables
@@ -896,10 +1671,13 @@ All API endpoints follow a consistent error response format:
 - ✅ Audit Logging
 - ✅ Real-time Active Entries monitoring
 - ✅ Advanced Filtering and Search
+- ✅ Analytics & Dashboard (Statistics, Peak Hours, Trends)
+- ✅ Reports (Daily, Weekly, Monthly, Custom)
+- ✅ User Management (CRUD operations)
+- ✅ User Search & Filtering
+- ✅ Redis Caching Integration
 
 ### Upcoming Features
-- 🔄 User Management Dashboard
-- 🔄 Advanced Analytics and Reports
 - 🔄 Email Notifications
 - 🔄 Mobile Application Support
 - 🔄 WebSocket for Real-time Updates
