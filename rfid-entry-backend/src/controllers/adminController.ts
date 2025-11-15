@@ -5,7 +5,7 @@ import { logAuditAction } from '../services/auditService';
 import { Op } from 'sequelize';
 
 // GET /api/admins - List all admins
-export const getAllAdmins = async (req: Request, res: Response) => {
+export const getAllAdmins = async (req: Request, res: Response): Promise<Response> => {
   try {
     if (!req.admin) {
       return res.status(401).json({
@@ -27,11 +27,11 @@ export const getAllAdmins = async (req: Request, res: Response) => {
     const offset = (page - 1) * limit;
     const role = req.query.role as string;
 
-    const where: any = {};
+    const where: { role?: "super_admin" | "staff" } = {};
 
     // Filter by role
-    if (role) {
-      where.role = role;
+    if (role && ['super_admin', 'staff'].includes(role)) {
+      where.role = role as "super_admin" | "staff";
     }
 
     const { count, rows } = await Admin.findAndCountAll({
@@ -42,7 +42,7 @@ export const getAllAdmins = async (req: Request, res: Response) => {
       offset,
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         admins: rows,
@@ -56,7 +56,7 @@ export const getAllAdmins = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Get all admins error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch admins',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -65,7 +65,7 @@ export const getAllAdmins = async (req: Request, res: Response) => {
 };
 
 // POST /api/admins - Create admin
-export const createAdmin = async (req: Request, res: Response) => {
+export const createAdmin = async (req: Request, res: Response): Promise<Response> => {
   try {
     if (!req.admin) {
       return res.status(401).json({
@@ -151,14 +151,14 @@ export const createAdmin = async (req: Request, res: Response) => {
       ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Admin created successfully',
       data: admin.toSafeObject(),
     });
   } catch (error) {
     console.error('Create admin error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to create admin',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -167,7 +167,7 @@ export const createAdmin = async (req: Request, res: Response) => {
 };
 
 // GET /api/admins/:id - Get admin details
-export const getAdminById = async (req: Request, res: Response) => {
+export const getAdminById = async (req: Request, res: Response): Promise<Response> => {
   try {
     if (!req.admin) {
       return res.status(401).json({
@@ -214,7 +214,7 @@ export const getAdminById = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         admin,
@@ -226,7 +226,7 @@ export const getAdminById = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Get admin by ID error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to fetch admin',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -235,7 +235,7 @@ export const getAdminById = async (req: Request, res: Response) => {
 };
 
 // PUT /api/admins/:id - Update admin
-export const updateAdmin = async (req: Request, res: Response) => {
+export const updateAdmin = async (req: Request, res: Response): Promise<Response> => {
   try {
     if (!req.admin) {
       return res.status(401).json({
@@ -350,14 +350,14 @@ export const updateAdmin = async (req: Request, res: Response) => {
       ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Admin updated successfully',
       data: admin.toSafeObject(),
     });
   } catch (error) {
     console.error('Update admin error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to update admin',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -366,7 +366,7 @@ export const updateAdmin = async (req: Request, res: Response) => {
 };
 
 // DELETE /api/admins/:id - Delete admin
-export const deleteAdmin = async (req: Request, res: Response) => {
+export const deleteAdmin = async (req: Request, res: Response): Promise<Response> => {
   try {
     if (!req.admin) {
       return res.status(401).json({
@@ -425,13 +425,13 @@ export const deleteAdmin = async (req: Request, res: Response) => {
       ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Admin deleted successfully',
     });
   } catch (error) {
     console.error('Delete admin error:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to delete admin',
       error: error instanceof Error ? error.message : 'Unknown error',

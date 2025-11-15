@@ -45,7 +45,7 @@ export const validateCreateAdmin = [
         errors: errors.array(),
       });
     }
-    next();
+    return next();
   },
 ];
 
@@ -89,6 +89,6 @@ export const validateUpdateAdmin = [
         errors: errors.array(),
       });
     }
-    next();
+    return next();
   },
 ];
