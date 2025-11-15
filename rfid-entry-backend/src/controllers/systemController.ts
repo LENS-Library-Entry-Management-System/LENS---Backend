@@ -15,6 +15,19 @@ import sequelize from '../config/database';
 import { QueryTypes } from 'sequelize';
 import fs from 'fs';
 
+interface SystemHealth {
+  status: string;
+  timestamp: string;
+  database: string;
+  backupDirectory: string;
+  uptime: number;
+  memory: {
+    used: string;
+    total: string;
+  };
+  backupPath?: string;
+}
+
 // POST /api/system/backup - Create backup
 export const createBackup = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -237,7 +250,7 @@ export const removeBackup = async (req: Request, res: Response): Promise<void> =
 // GET /api/system/health - System health check
 export const getSystemHealth = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const health: any = {
+    const health: SystemHealth = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       database: 'disconnected',
