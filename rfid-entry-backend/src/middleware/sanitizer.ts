@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-// @ts-ignore - express-sanitizer doesn't have types
+
 import sanitizer from 'express-sanitizer';
 
 // Middleware to sanitize user inputs
