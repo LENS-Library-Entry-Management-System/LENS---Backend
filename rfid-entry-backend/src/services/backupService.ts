@@ -216,10 +216,9 @@ export const createFullBackup = async (adminId: number): Promise<SystemBackup> =
   }
 };
 
-// List all backups (excluding soft-deleted)
+// List all backups (including soft-deleted to show deletedAt and restoreAt fields)
 export const listBackups = async (): Promise<SystemBackup[]> => {
   return await SystemBackup.findAll({
-    where: { deletedAt: null },
     include: [{ model: Admin, as: 'admin', attributes: ['username', 'fullName'] }],
     order: [['backupDate', 'DESC']],
   });

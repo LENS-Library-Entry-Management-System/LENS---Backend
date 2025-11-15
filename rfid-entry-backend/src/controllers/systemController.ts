@@ -175,18 +175,22 @@ export const restoreBackup = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // Update the restoreAt timestamp when restore is initiated
+    backup.restoreAt = new Date();
+    await backup.save();
+
     await logAuditAction({
       adminId: req.admin.adminId,
-      actionType: 'view',
+      actionType: 'edit',
       targetTable: 'system_backups',
       targetId: backup.backupId,
-      description: `Viewed backup details for restore: ${backup.backupType}`,
+      description: `Initiated restore for backup: ${backup.backupType}`,
       ipAddress: req.ip || req.socket.remoteAddress || null,
     });
 
     res.json({
       success: true,
-      message: 'Backup files located. Please import CSV files manually into the database.',
+      message: 'Backup restore initiated. Please import CSV files manually into the database.',
       data: {
         backup,
         instructions: [
