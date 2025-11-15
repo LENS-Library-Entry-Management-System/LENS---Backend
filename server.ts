@@ -12,6 +12,7 @@ import analyticsRoutes from './rfid-entry-backend/src/routes/analyticsRoutes';
 import auditRoutes from './rfid-entry-backend/src/routes/auditRoutes';
 import reportRoutes from './rfid-entry-backend/src/routes/reportRoutes';
 import adminRoutes from './rfid-entry-backend/src/routes/adminRoutes';
+import systemRoutes from './rfid-entry-backend/src/routes/systemRoutes';
 
 dotenv.config();
 
@@ -49,6 +50,9 @@ app.use('/api/reports', reportRoutes);
 
 // Admin routes
 app.use('/api/admins', adminRoutes);
+
+// System routes (backup, restore, maintenance)
+app.use('/api/system', systemRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {
@@ -103,6 +107,8 @@ const startServer = async () => {
       console.log(`Health: http://localhost:${PORT}/health`);
       console.log(`Auth API: http://localhost:${PORT}/api/auth`);
       console.log(`Reports API: http://localhost:${PORT}/api/reports`);
+      console.log(`Health: http://localhost:${PORT}/health`);
+      console.log(`System Health: http://localhost:${PORT}/api/system/health`);
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
   } catch (error) {
