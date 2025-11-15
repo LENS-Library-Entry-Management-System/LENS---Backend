@@ -83,6 +83,13 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Revoke refresh token if provided
+    const refreshToken = req.body.refreshToken;
+    if (refreshToken) {
+      const { revokeRefreshToken } = await import('../utils/jwt');
+      revokeRefreshToken(refreshToken);
+    }
+
     await logAuditAction({
       adminId: req.admin.adminId,
       actionType: 'logout',
