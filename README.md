@@ -15,6 +15,7 @@ LENS (Library Entry Notation System) modernizes library access management by aut
 - **Automated ID Scanning**: RFID-based entry logging with duplicate detection
 - **Real-time Entry Monitoring**: Live tracking of library entries
 - **Secure Authentication**: JWT-based admin authentication with role-based access control
+- **Admin Management**: Complete admin user management with role-based permissions (super_admin, staff)
 - **User Management**: Comprehensive student and faculty record management (CRUD operations)
 - **Audit Logging**: Complete trail of all administrative actions with detailed tracking
 - **Analytics & Dashboard**: Real-time statistics, peak hours analysis, and entry trends
@@ -279,6 +280,166 @@ Authorization: Bearer <accessToken>
     "email": "newemail@ustp.edu.ph",
     "role": "super_admin"
   }
+}
+```
+
+---
+
+## Admin Management Endpoints (Protected)
+
+All endpoints require authentication header:
+```
+Authorization: Bearer <accessToken>
+```
+
+### GET /admins
+**Description**: Get all admin users with pagination and filtering (Super Admin only)
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Records per page (default: 50)
+- `role` (optional): Filter by role ('super_admin', 'staff')
+
+**Example**: `GET /admins?page=1&limit=50&role=staff`
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "admins": [
+      {
+        "adminId": 1,
+        "username": "admin",
+        "fullName": "System Administrator",
+        "email": "admin@ustp.edu.ph",
+        "role": "super_admin",
+        "lastLogin": "2025-11-13T10:30:00.000Z",
+        "createdAt": "2025-01-01T00:00:00Z",
+        "updatedAt": "2025-01-01T00:00:00Z"
+      }
+    ],
+    "pagination": {
+      "total": 2,
+      "page": 1,
+      "limit": 50,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+---
+
+### POST /admins
+**Description**: Create a new admin user (Super Admin only)
+
+**Request Body**:
+```json
+{
+  "username": "newadmin",
+  "password": "securepassword123",
+  "fullName": "New Administrator",
+  "email": "newadmin@ustp.edu.ph",
+  "role": "staff"
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "success": true,
+  "message": "Admin created successfully",
+  "data": {
+    "adminId": 3,
+    "username": "newadmin",
+    "fullName": "New Administrator",
+    "email": "newadmin@ustp.edu.ph",
+    "role": "staff",
+    "createdAt": "2025-11-14T10:30:00Z",
+    "updatedAt": "2025-11-14T10:30:00Z"
+  }
+}
+```
+
+---
+
+### GET /admins/:id
+**Description**: Get admin details by ID (Super Admin or self)
+
+**Parameters**:
+- `id` (path): Admin ID (numeric)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "data": {
+    "admin": {
+      "adminId": 1,
+      "username": "admin",
+      "fullName": "System Administrator",
+      "email": "admin@ustp.edu.ph",
+      "role": "super_admin",
+      "lastLogin": "2025-11-13T10:30:00.000Z",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "updatedAt": "2025-01-01T00:00:00Z"
+    },
+    "stats": {
+      "totalActions": 150,
+      "actionsToday": 5
+    }
+  }
+}
+```
+
+---
+
+### PUT /admins/:id
+**Description**: Update admin information (Super Admin or self)
+
+**Parameters**:
+- `id` (path): Admin ID (numeric)
+
+**Request Body**:
+```json
+{
+  "fullName": "Updated Administrator",
+  "email": "updated@ustp.edu.ph",
+  "role": "super_admin"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Admin updated successfully",
+  "data": {
+    "adminId": 1,
+    "username": "admin",
+    "fullName": "Updated Administrator",
+    "email": "updated@ustp.edu.ph",
+    "role": "super_admin",
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-11-14T10:30:00Z"
+  }
+}
+```
+
+---
+
+### DELETE /admins/:id
+**Description**: Delete an admin user (Super Admin only)
+
+**Parameters**:
+- `id` (path): Admin ID (numeric)
+
+**Response** (200 OK):
+```json
+{
+  "success": true,
+  "message": "Admin deleted successfully"
 }
 ```
 
