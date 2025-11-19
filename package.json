@@ -12,6 +12,7 @@
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "db:create": "ts-node rfid-entry-backend/scripts/createTables.ts",
     "db:create-users": "ts-node rfid-entry-backend/scripts/createUserTables.ts",
+    "db:create-system-backup": "ts-node rfid-entry-backend/scripts/createSystemBackupTable.ts",
     "db:sync": "ts-node rfid-entry-backend/scripts/syncDatabase.ts",
     "seed:admin": "ts-node rfid-entry-backend/scripts/seedAdmin.ts",
     "seed:users": "ts-node rfid-entry-backend/scripts/seedUsers.ts",
