@@ -1,4 +1,3 @@
-```markdown
 # LENS - Library Entry Notation System
 
 **Backend Repository**
@@ -468,4 +467,3 @@ This project is proprietary software for USTP-CDO Library.
 ## Contributors
 
 - **Development Team**: USTP-CDO
-```
