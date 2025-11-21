@@ -25,8 +25,7 @@ const getOrderFromRequest = (req: Request): Order => {
     }
   }
 
-  if (rawOrder && !rawSort) {
-    field = field || undefined;
+  if (rawOrder) {
     if (rawOrder.toLowerCase().startsWith('asc')) dir = 'ASC';
     else dir = 'DESC';
   }
@@ -40,7 +39,9 @@ const getOrderFromRequest = (req: Request): Order => {
   const normalize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   const nf = normalize(f);
 
-  console.debug('getOrderFromRequest -> field:', field, 'normalized:', nf, 'dir:', dir);
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('getOrderFromRequest -> field:', field, 'normalized:', nf, 'dir:', dir);
+  }
 
   // Map allowed fields to safe Sequelize order clauses
   // Whitelist to avoid SQL injection
@@ -87,7 +88,9 @@ const getOrderFromRequest = (req: Request): Order => {
 };
 export const getAllEntries = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.debug('getAllEntries request query:', req.query);
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('getAllEntries request query:', req.query);
+    }
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = (page - 1) * limit;
@@ -197,7 +200,46 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
     const { id } = req.params;
     const { entryTimestamp, entryMethod, status } = req.body;
 
-    const entry = await EntryLog.findByPk(id);
+    // Validate ID
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid entry ID',
+      });
+      return;
+    }
+
+    // Validate enums
+    if (entryMethod && !['rfid', 'manual', 'qr'].includes(entryMethod)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid entry method',
+      });
+      return;
+    }
+    if (status && !['success', 'failed', 'denied'].includes(status)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid status',
+      });
+      return;
+    }
+
+    // Validate date
+    let parsedTimestamp: Date | undefined;
+    if (entryTimestamp) {
+      parsedTimestamp = new Date(entryTimestamp);
+      if (isNaN(parsedTimestamp.getTime())) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid entry timestamp',
+        });
+        return;
+      }
+    }
+
+    const entry = await EntryLog.findByPk(parsedId);
 
     if (!entry) {
       res.status(404).json({
@@ -213,7 +255,7 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
       status: entry.status,
     };
 
-    if (entryTimestamp) entry.entryTimestamp = new Date(entryTimestamp);
+    if (parsedTimestamp) entry.entryTimestamp = parsedTimestamp;
     if (entryMethod) entry.entryMethod = entryMethod;
     if (status) entry.status = status;
 
@@ -233,7 +275,7 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
           status: entry.status,
         },
       }),
-      ipAddress: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket?.remoteAddress || null,
     });
 
     res.json({
@@ -291,7 +333,7 @@ export const deleteEntry = async (req: Request, res: Response): Promise<void> =>
           entryMethod: entry.entryMethod,
         },
       }),
-      ipAddress: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket?.remoteAddress || null,
     });
 
     res.json({
@@ -313,8 +355,9 @@ export const deleteEntry = async (req: Request, res: Response): Promise<void> =>
 // GET /api/entries/active - Real-time monitoring (FR-09)
 export const getActiveEntries = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC to avoid timezone issues
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const entries = await EntryLog.findAll({
       where: {
@@ -376,9 +419,26 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
     // Filter by date range
     if (startDate || endDate) {
       where.entryTimestamp = {};
-      if (startDate) where.entryTimestamp[Op.gte] = new Date(startDate);
+      if (startDate) {
+        const start = new Date(startDate);
+        if (isNaN(start.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid start date',
+          });
+          return;
+        }
+        where.entryTimestamp[Op.gte] = start;
+      }
       if (endDate) {
         const end = new Date(endDate);
+        if (isNaN(end.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid end date',
+          });
+          return;
+        }
         end.setHours(23, 59, 59, 999);
         where.entryTimestamp[Op.lte] = end;
       }
@@ -443,7 +503,9 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
 // GET /api/entries/export - Export entries (CSV/PDF)
 export const exportEntries = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.debug('exportEntries request query:', req.query);
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('exportEntries request query:', req.query);
+    }
     if (!req.admin) {
       res.status(401).json({
         success: false,
@@ -458,9 +520,26 @@ export const exportEntries = async (req: Request, res: Response): Promise<void> 
 
     if (startDate || endDate) {
       where.entryTimestamp = {};
-      if (startDate) where.entryTimestamp[Op.gte] = new Date(startDate as string);
+      if (startDate) {
+        const start = new Date(startDate as string);
+        if (isNaN(start.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid start date',
+          });
+          return;
+        }
+        where.entryTimestamp[Op.gte] = start;
+      }
       if (endDate) {
         const end = new Date(endDate as string);
+        if (isNaN(end.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid end date',
+          });
+          return;
+        }
         end.setHours(23, 59, 59, 999);
         where.entryTimestamp[Op.lte] = end;
       }
