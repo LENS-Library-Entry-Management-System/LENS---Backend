@@ -409,7 +409,9 @@ export const getActiveEntries = async (_req: Request, res: Response): Promise<vo
 // POST /api/entries/filter - Filter/search (FR-10)
 export const filterEntries = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.debug('filterEntries request body (for filter):', req.body);
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('filterEntries request body (for filter):', req.body);
+    }
     const { college, department, userType, startDate, endDate, searchQuery, page = 1, limit = 50 } = req.body;
 
     const where: WhereOptions = {};
