@@ -5,21 +5,112 @@ import User from '../models/User';
 import { logAuditAction } from '../services/auditService';
 
 // GET /api/entries - List all entries (paginated)
+// Helper: build Sequelize `order` array from request query params
+const getOrderFromRequest = (req: Request) => {
+  // Accept several shapes: sort=field:dir, sortBy + order, sort_by + sort_dir
+  const rawSort = (req.query.sort as string) || (req.query.sortBy as string) || (req.query.sort_by as string);
+  const rawOrder = (req.query.order as string) || (req.query.sort_dir as string) || (req.query.sortDir as string);
+
+  let field: string | undefined;
+  let dir: 'ASC' | 'DESC' = 'DESC';
+
+  if (rawSort) {
+    if (rawSort.includes(':')) {
+      const [f, d] = rawSort.split(':');
+      field = f;
+      if (d && d.toLowerCase().startsWith('asc')) dir = 'ASC';
+      else dir = 'DESC';
+    } else {
+      field = rawSort;
+    }
+  }
+
+  if (rawOrder && !rawSort) {
+    field = field || undefined;
+    if (rawOrder.toLowerCase().startsWith('asc')) dir = 'ASC';
+    else dir = 'DESC';
+  }
+
+  // If we still don't have a field, return default ordering
+  if (!field) return [['entryTimestamp', 'DESC'] as any];
+
+  // Normalize field names (allow snake or camel and common aliases)
+  const f = field.replace(/\s+/g, '');
+  // remove any non-alphanumeric characters (dots, underscores, hyphens, spaces)
+  const normalize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const nf = normalize(f);
+
+  console.debug('getOrderFromRequest -> field:', field, 'normalized:', nf, 'dir:', dir);
+
+  // Map allowed fields to safe Sequelize order clauses
+  // Whitelist to avoid SQL injection
+  switch (nf) {
+    case 'entrytimestamp':
+    case 'timestamp':
+      return [['entryTimestamp', dir] as any];
+    case 'logid':
+    case 'log_id':
+      return [['logId', dir] as any];
+    case 'entrymethod':
+      return [['entryMethod', dir] as any];
+    case 'status':
+      return [['status', dir] as any];
+    case 'userid':
+    case 'user_id':
+      return [['userId', dir] as any];
+    // User nested fields
+    case 'userlastname':
+    case 'lastname':
+      return [[{ model: User, as: 'user' }, 'lastName', dir] as any];
+    case 'userfirstname':
+    case 'firstname':
+      return [[{ model: User, as: 'user' }, 'firstName', dir] as any];
+    case 'useridnumber':
+    case 'idnumber':
+      return [[{ model: User, as: 'user' }, 'idNumber', dir] as any];
+    case 'usercollege':
+    case 'college':
+      return [[{ model: User, as: 'user' }, 'college', dir] as any];
+    case 'userdepartment':
+    case 'department':
+      return [[{ model: User, as: 'user' }, 'department', dir] as any];
+    case 'useryearlevel':
+    case 'yearlevel':
+      return [[{ model: User, as: 'user' }, 'yearLevel', dir] as any];
+    case 'userusertype':
+    case 'usertype':
+      return [[{ model: User, as: 'user' }, 'userType', dir] as any];
+    default:
+      // Unknown field — fall back to default ordering
+      return [['entryTimestamp', 'DESC'] as any];
+  }
+};
 export const getAllEntries = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.debug('getAllEntries request query:', req.query);
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = (page - 1) * limit;
+    // Allow optional filtering by userType (student|faculty)
+    const userType = (req.query.userType as string) || undefined
+    const userWhere: any = {}
+    if (userType && userType !== 'all') {
+      userWhere.userType = userType
+    }
+
+    const includeUser: any = {
+      model: User,
+      as: 'user',
+      attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department', 'yearLevel'],
+    }
+    if (Object.keys(userWhere).length > 0) {
+      includeUser.where = userWhere
+      includeUser.required = true
+    }
 
     const { count, rows } = await EntryLog.findAndCountAll({
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department', 'yearLevel'],
-        },
-      ],
-      order: [['entryTimestamp', 'DESC']],
+      include: [includeUser],
+      order: getOrderFromRequest(req),
       limit,
       offset,
     });
@@ -269,6 +360,7 @@ export const getActiveEntries = async (_req: Request, res: Response): Promise<vo
 // POST /api/entries/filter - Filter/search (FR-10)
 export const filterEntries = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.debug('filterEntries request body (for filter):', req.body);
     const { college, department, userType, startDate, endDate, searchQuery, page = 1, limit = 50 } = req.body;
 
     const where: WhereOptions = {};
@@ -313,7 +405,7 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
           required: Object.keys(userWhere).length > 0,
         },
       ],
-      order: [['entryTimestamp', 'DESC']],
+      order: getOrderFromRequest(req),
       limit,
       offset,
     });
@@ -345,6 +437,7 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
 // GET /api/entries/export - Export entries (CSV/PDF)
 export const exportEntries = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.debug('exportEntries request query:', req.query);
     if (!req.admin) {
       res.status(401).json({
         success: false,
@@ -375,7 +468,7 @@ export const exportEntries = async (req: Request, res: Response): Promise<void> 
           as: 'user',
         },
       ],
-      order: [['entryTimestamp', 'DESC']],
+      order: getOrderFromRequest(req),
     });
 
     if (format === 'csv') {
