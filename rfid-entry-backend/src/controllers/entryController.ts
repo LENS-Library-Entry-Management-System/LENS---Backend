@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { Op, WhereOptions } from 'sequelize';
+import { Op, WhereOptions, Order } from 'sequelize';
 import EntryLog from '../models/EntryLog';
 import User from '../models/User';
 import { logAuditAction } from '../services/auditService';
 
 // GET /api/entries - List all entries (paginated)
 // Helper: build Sequelize `order` array from request query params
-const getOrderFromRequest = (req: Request) => {
+const getOrderFromRequest = (req: Request): Order => {
   // Accept several shapes: sort=field:dir, sortBy + order, sort_by + sort_dir
   const rawSort = (req.query.sort as string) || (req.query.sortBy as string) || (req.query.sort_by as string);
   const rawOrder = (req.query.order as string) || (req.query.sort_dir as string) || (req.query.sortDir as string);
@@ -32,7 +32,7 @@ const getOrderFromRequest = (req: Request) => {
   }
 
   // If we still don't have a field, return default ordering
-  if (!field) return [['entryTimestamp', 'DESC'] as any];
+  if (!field) return [['entryTimestamp', 'DESC']];
 
   // Normalize field names (allow snake or camel and common aliases)
   const f = field.replace(/\s+/g, '');
@@ -47,42 +47,42 @@ const getOrderFromRequest = (req: Request) => {
   switch (nf) {
     case 'entrytimestamp':
     case 'timestamp':
-      return [['entryTimestamp', dir] as any];
+      return [['entryTimestamp', dir]];
     case 'logid':
     case 'log_id':
-      return [['logId', dir] as any];
+      return [['logId', dir]];
     case 'entrymethod':
-      return [['entryMethod', dir] as any];
+      return [['entryMethod', dir]];
     case 'status':
-      return [['status', dir] as any];
+      return [['status', dir]];
     case 'userid':
     case 'user_id':
-      return [['userId', dir] as any];
+      return [['userId', dir]];
     // User nested fields
     case 'userlastname':
     case 'lastname':
-      return [[{ model: User, as: 'user' }, 'lastName', dir] as any];
+      return [[{ model: User, as: 'user' }, 'lastName', dir]];
     case 'userfirstname':
     case 'firstname':
-      return [[{ model: User, as: 'user' }, 'firstName', dir] as any];
+      return [[{ model: User, as: 'user' }, 'firstName', dir]];
     case 'useridnumber':
     case 'idnumber':
-      return [[{ model: User, as: 'user' }, 'idNumber', dir] as any];
+      return [[{ model: User, as: 'user' }, 'idNumber', dir]];
     case 'usercollege':
     case 'college':
-      return [[{ model: User, as: 'user' }, 'college', dir] as any];
+      return [[{ model: User, as: 'user' }, 'college', dir]];
     case 'userdepartment':
     case 'department':
-      return [[{ model: User, as: 'user' }, 'department', dir] as any];
+      return [[{ model: User, as: 'user' }, 'department', dir]];
     case 'useryearlevel':
     case 'yearlevel':
-      return [[{ model: User, as: 'user' }, 'yearLevel', dir] as any];
+      return [[{ model: User, as: 'user' }, 'yearLevel', dir]];
     case 'userusertype':
     case 'usertype':
-      return [[{ model: User, as: 'user' }, 'userType', dir] as any];
+      return [[{ model: User, as: 'user' }, 'userType', dir]];
     default:
       // Unknown field — fall back to default ordering
-      return [['entryTimestamp', 'DESC'] as any];
+      return [['entryTimestamp', 'DESC']];
   }
 };
 export const getAllEntries = async (req: Request, res: Response): Promise<void> => {
@@ -93,12 +93,18 @@ export const getAllEntries = async (req: Request, res: Response): Promise<void> 
     const offset = (page - 1) * limit;
     // Allow optional filtering by userType (student|faculty)
     const userType = (req.query.userType as string) || undefined
-    const userWhere: any = {}
+    const userWhere: WhereOptions = {}
     if (userType && userType !== 'all') {
       userWhere.userType = userType
     }
 
-    const includeUser: any = {
+    const includeUser: {
+      model: typeof User;
+      as: string;
+      attributes: string[];
+      where?: WhereOptions;
+      required?: boolean;
+    } = {
       model: User,
       as: 'user',
       attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department', 'yearLevel'],
