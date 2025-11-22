@@ -1,25 +1,125 @@
 import { Request, Response } from 'express';
-import { Op, WhereOptions } from 'sequelize';
+import { Op, WhereOptions, Order } from 'sequelize';
 import EntryLog from '../models/EntryLog';
 import User from '../models/User';
 import { logAuditAction } from '../services/auditService';
 
 // GET /api/entries - List all entries (paginated)
+// Helper: build Sequelize `order` array from request query params
+const getOrderFromRequest = (req: Request): Order => {
+  // Accept several shapes: sort=field:dir, sortBy + order, sort_by + sort_dir
+  const rawSort = (req.query.sort as string) || (req.query.sortBy as string) || (req.query.sort_by as string);
+  const rawOrder = (req.query.order as string) || (req.query.sort_dir as string) || (req.query.sortDir as string);
+
+  let field: string | undefined;
+  let dir: 'ASC' | 'DESC' = 'DESC';
+
+  if (rawSort) {
+    if (rawSort.includes(':')) {
+      const [f, d] = rawSort.split(':');
+      field = f;
+      if (d && d.toLowerCase().startsWith('asc')) dir = 'ASC';
+      else dir = 'DESC';
+    } else {
+      field = rawSort;
+    }
+  }
+
+  if (rawOrder) {
+    if (rawOrder.toLowerCase().startsWith('asc')) dir = 'ASC';
+    else dir = 'DESC';
+  }
+
+  // If we still don't have a field, return default ordering
+  if (!field) return [['entryTimestamp', 'DESC']];
+
+  // Normalize field names (allow snake or camel and common aliases)
+  const f = field.replace(/\s+/g, '');
+  // remove any non-alphanumeric characters (dots, underscores, hyphens, spaces)
+  const normalize = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const nf = normalize(f);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('getOrderFromRequest -> field:', field, 'normalized:', nf, 'dir:', dir);
+  }
+
+  // Map allowed fields to safe Sequelize order clauses
+  // Whitelist to avoid SQL injection
+  switch (nf) {
+    case 'entrytimestamp':
+    case 'timestamp':
+      return [['entryTimestamp', dir]];
+    case 'logid':
+    case 'log_id':
+      return [['logId', dir]];
+    case 'entrymethod':
+      return [['entryMethod', dir]];
+    case 'status':
+      return [['status', dir]];
+    case 'userid':
+    case 'user_id':
+      return [['userId', dir]];
+    // User nested fields
+    case 'userlastname':
+    case 'lastname':
+      return [[{ model: User, as: 'user' }, 'lastName', dir]];
+    case 'userfirstname':
+    case 'firstname':
+      return [[{ model: User, as: 'user' }, 'firstName', dir]];
+    case 'useridnumber':
+    case 'idnumber':
+      return [[{ model: User, as: 'user' }, 'idNumber', dir]];
+    case 'usercollege':
+    case 'college':
+      return [[{ model: User, as: 'user' }, 'college', dir]];
+    case 'userdepartment':
+    case 'department':
+      return [[{ model: User, as: 'user' }, 'department', dir]];
+    case 'useryearlevel':
+    case 'yearlevel':
+      return [[{ model: User, as: 'user' }, 'yearLevel', dir]];
+    case 'userusertype':
+    case 'usertype':
+      return [[{ model: User, as: 'user' }, 'userType', dir]];
+    default:
+      // Unknown field — fall back to default ordering
+      return [['entryTimestamp', 'DESC']];
+  }
+};
 export const getAllEntries = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('getAllEntries request query:', req.query);
+    }
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = (page - 1) * limit;
+    // Allow optional filtering by userType (student|faculty)
+    const userType = (req.query.userType as string) || undefined
+    const userWhere: WhereOptions = {}
+    if (userType && userType !== 'all') {
+      userWhere.userType = userType
+    }
+
+    const includeUser: {
+      model: typeof User;
+      as: string;
+      attributes: string[];
+      where?: WhereOptions;
+      required?: boolean;
+    } = {
+      model: User,
+      as: 'user',
+      attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department', 'yearLevel'],
+    }
+    if (Object.keys(userWhere).length > 0) {
+      includeUser.where = userWhere
+      includeUser.required = true
+    }
 
     const { count, rows } = await EntryLog.findAndCountAll({
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['userId', 'idNumber', 'firstName', 'lastName', 'userType', 'college', 'department', 'yearLevel'],
-        },
-      ],
-      order: [['entryTimestamp', 'DESC']],
+      include: [includeUser],
+      order: getOrderFromRequest(req),
       limit,
       offset,
     });
@@ -100,7 +200,46 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
     const { id } = req.params;
     const { entryTimestamp, entryMethod, status } = req.body;
 
-    const entry = await EntryLog.findByPk(id);
+    // Validate ID
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid entry ID',
+      });
+      return;
+    }
+
+    // Validate enums
+    if (entryMethod && !['rfid', 'manual', 'qr'].includes(entryMethod)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid entry method',
+      });
+      return;
+    }
+    if (status && !['success', 'failed', 'denied'].includes(status)) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid status',
+      });
+      return;
+    }
+
+    // Validate date
+    let parsedTimestamp: Date | undefined;
+    if (entryTimestamp) {
+      parsedTimestamp = new Date(entryTimestamp);
+      if (isNaN(parsedTimestamp.getTime())) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid entry timestamp',
+        });
+        return;
+      }
+    }
+
+    const entry = await EntryLog.findByPk(parsedId);
 
     if (!entry) {
       res.status(404).json({
@@ -116,7 +255,7 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
       status: entry.status,
     };
 
-    if (entryTimestamp) entry.entryTimestamp = new Date(entryTimestamp);
+    if (parsedTimestamp) entry.entryTimestamp = parsedTimestamp;
     if (entryMethod) entry.entryMethod = entryMethod;
     if (status) entry.status = status;
 
@@ -136,7 +275,7 @@ export const updateEntry = async (req: Request, res: Response): Promise<void> =>
           status: entry.status,
         },
       }),
-      ipAddress: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket?.remoteAddress || null,
     });
 
     res.json({
@@ -194,7 +333,7 @@ export const deleteEntry = async (req: Request, res: Response): Promise<void> =>
           entryMethod: entry.entryMethod,
         },
       }),
-      ipAddress: req.ip || req.socket.remoteAddress || null,
+      ipAddress: req.ip || req.socket?.remoteAddress || null,
     });
 
     res.json({
@@ -216,8 +355,9 @@ export const deleteEntry = async (req: Request, res: Response): Promise<void> =>
 // GET /api/entries/active - Real-time monitoring (FR-09)
 export const getActiveEntries = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use UTC to avoid timezone issues
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const entries = await EntryLog.findAll({
       where: {
@@ -269,6 +409,9 @@ export const getActiveEntries = async (_req: Request, res: Response): Promise<vo
 // POST /api/entries/filter - Filter/search (FR-10)
 export const filterEntries = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('filterEntries request body (for filter):', req.body);
+    }
     const { college, department, userType, startDate, endDate, searchQuery, page = 1, limit = 50 } = req.body;
 
     const where: WhereOptions = {};
@@ -278,9 +421,26 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
     // Filter by date range
     if (startDate || endDate) {
       where.entryTimestamp = {};
-      if (startDate) where.entryTimestamp[Op.gte] = new Date(startDate);
+      if (startDate) {
+        const start = new Date(startDate);
+        if (isNaN(start.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid start date',
+          });
+          return;
+        }
+        where.entryTimestamp[Op.gte] = start;
+      }
       if (endDate) {
         const end = new Date(endDate);
+        if (isNaN(end.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid end date',
+          });
+          return;
+        }
         end.setHours(23, 59, 59, 999);
         where.entryTimestamp[Op.lte] = end;
       }
@@ -313,7 +473,7 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
           required: Object.keys(userWhere).length > 0,
         },
       ],
-      order: [['entryTimestamp', 'DESC']],
+      order: getOrderFromRequest(req),
       limit,
       offset,
     });
@@ -345,6 +505,9 @@ export const filterEntries = async (req: Request, res: Response): Promise<void> 
 // GET /api/entries/export - Export entries (CSV/PDF)
 export const exportEntries = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('exportEntries request query:', req.query);
+    }
     if (!req.admin) {
       res.status(401).json({
         success: false,
@@ -359,9 +522,26 @@ export const exportEntries = async (req: Request, res: Response): Promise<void> 
 
     if (startDate || endDate) {
       where.entryTimestamp = {};
-      if (startDate) where.entryTimestamp[Op.gte] = new Date(startDate as string);
+      if (startDate) {
+        const start = new Date(startDate as string);
+        if (isNaN(start.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid start date',
+          });
+          return;
+        }
+        where.entryTimestamp[Op.gte] = start;
+      }
       if (endDate) {
         const end = new Date(endDate as string);
+        if (isNaN(end.getTime())) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid end date',
+          });
+          return;
+        }
         end.setHours(23, 59, 59, 999);
         where.entryTimestamp[Op.lte] = end;
       }
@@ -375,7 +555,7 @@ export const exportEntries = async (req: Request, res: Response): Promise<void> 
           as: 'user',
         },
       ],
-      order: [['entryTimestamp', 'DESC']],
+      order: getOrderFromRequest(req),
     });
 
     if (format === 'csv') {
