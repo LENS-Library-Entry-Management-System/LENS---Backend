@@ -20,9 +20,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+// Support multiple origins via comma-separated `CORS_ORIGIN` env var
+const corsOriginEnv = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const corsWhitelist = corsOriginEnv.split(',').map((s) => s.trim()).filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // allow requests with no origin (e.g., curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (corsWhitelist.indexOf(origin) !== -1) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'), false);
+    },
     credentials: true,
   })
 );
