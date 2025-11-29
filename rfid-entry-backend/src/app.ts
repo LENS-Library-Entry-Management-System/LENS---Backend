@@ -13,24 +13,28 @@ import reportRoutes from "./routes/reportRoutes";
 const app = express();
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
     },
-  },
-}));
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true,
-}));
+  })
+);
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true,
+  })
+);
 
 // Request size limits
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // Input sanitization
 app.use(sanitizeInput);

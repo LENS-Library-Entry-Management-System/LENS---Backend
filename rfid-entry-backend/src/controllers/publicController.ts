@@ -1,13 +1,16 @@
-import { Request, Response } from 'express';
-import { Op } from 'sequelize';
-import crypto from 'crypto';
-import User from '../models/User';
-import EntryLog from '../models/EntryLog';
-import redisClient from '../config/redisClient';
+import { Request, Response } from "express";
+import { Op } from "sequelize";
+import crypto from "crypto";
+import User from "../models/User";
+import EntryLog from "../models/EntryLog";
+import redisClient from "../config/redisClient";
+import logger from "../utils/logger";
 
 // Validate RFID and check duplicates. Distinguish not-found vs inactive so
 // the controller can return a signup form URL for unknown tags.
-const validateRfidTag = async (rfidTag: string): Promise<{
+const validateRfidTag = async (
+  rfidTag: string
+): Promise<{
   isValid: boolean;
   user?: User;
   isDuplicate: boolean;
@@ -16,7 +19,6 @@ const validateRfidTag = async (rfidTag: string): Promise<{
   notFound?: boolean;
   inactive?: boolean;
 }> => {
-
   // find user regardless of status so we can differentiate missing vs inactive
   const user = await User.findOne({ where: { rfidTag } });
 
@@ -25,17 +27,17 @@ const validateRfidTag = async (rfidTag: string): Promise<{
       isValid: false,
       isDuplicate: false,
       notFound: true,
-      message: 'User not found',
+      message: "User not found",
     };
   }
 
-  if (user.status !== 'active') {
+  if (user.status !== "active") {
     return {
       isValid: false,
       isDuplicate: false,
       inactive: true,
       user,
-      message: 'User not active',
+      message: "User not active",
     };
   }
 
@@ -45,9 +47,9 @@ const validateRfidTag = async (rfidTag: string): Promise<{
     where: {
       userId: user.userId,
       entryTimestamp: { [Op.gte]: fiveMinutesAgo },
-      status: 'success',
+      status: "success",
     },
-    order: [['entryTimestamp', 'DESC']],
+    order: [["entryTimestamp", "DESC"]],
   });
 
   if (recentEntry) {
@@ -56,7 +58,7 @@ const validateRfidTag = async (rfidTag: string): Promise<{
       user,
       isDuplicate: true,
       lastEntry: recentEntry.entryTimestamp,
-      message: 'Duplicate entry detected',
+      message: "Duplicate entry detected",
     };
   }
 
@@ -75,16 +77,21 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
     if (!rfidTag) {
       res.status(400).json({
         success: false,
-        message: 'RFID tag is required',
+        message: "RFID tag is required",
       });
       return;
     }
+
+    logger.info(`RFID scan request received for tag: ${rfidTag}`);
 
     const validation = await validateRfidTag(rfidTag);
 
     if (!validation.isValid) {
       // If RFID isn't found, generate a temporary token and send frontend signup form URL
       if (validation.notFound) {
+        logger.info(
+          `RFID tag not found, generating signup token for: ${rfidTag}`
+        );
         const ttlSeconds = 10 * 60; // 10 minutes
         const reverseKey = `rfid:${rfidTag}`;
         let token: string | null = null;
@@ -94,21 +101,27 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
             await redisClient.expire(token, ttlSeconds);
             await redisClient.expire(reverseKey, ttlSeconds);
           } else {
-            token = crypto.randomBytes(20).toString('hex');
-            await redisClient.set(token, rfidTag || '', 'EX', ttlSeconds);
-            await redisClient.set(reverseKey, token, 'EX', ttlSeconds);
+            token = crypto.randomBytes(20).toString("hex");
+            await redisClient.set(token, rfidTag || "", "EX", ttlSeconds);
+            await redisClient.set(reverseKey, token, "EX", ttlSeconds);
           }
         } catch (redisErr) {
-          console.error('Redis set error (notFound):', redisErr);
+          console.error("Redis set error (notFound):", redisErr);
         }
 
-        const frontendBase = process.env.FRONTEND_FORM_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
-        const formUrl = `${frontendBase.replace(/\/$/, '')}/entry-form?token=${token}`;
+        const frontendBase =
+          process.env.FRONTEND_FORM_URL ||
+          process.env.CORS_ORIGIN ||
+          "http://localhost:3000";
+        const formUrl = `${frontendBase.replace(
+          /\/$/,
+          ""
+        )}/entry-form?token=${token}`;
 
         res.status(200).json({
           success: true,
-          message: 'RFID not registered. Complete signup via form.',
-          status: 'signup',
+          message: "RFID not registered. Complete signup via form.",
+          status: "signup",
           token,
           formUrl,
           data: { rfidTag },
@@ -117,19 +130,29 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
       }
 
       // inactive or other invalid cases remain errors
+      if (validation.inactive) {
+        logger.warn(`Inactive user attempted RFID scan: ${rfidTag}`);
+      } else {
+        logger.warn(
+          `Invalid RFID scan validation: ${rfidTag} - ${validation.message}`
+        );
+      }
       res.status(404).json({
         success: false,
-        message: validation.message || 'User not found or inactive',
+        message: validation.message || "User not found or inactive",
       });
       return;
     }
 
     if (validation.isDuplicate && validation.user) {
+      logger.info(
+        `Duplicate entry detected for user ${validation.user.idNumber} (${validation.user.fullName}) with RFID: ${rfidTag}`
+      );
       await EntryLog.create({
         userId: validation.user.userId,
         entryTimestamp: new Date(),
-        entryMethod: 'rfid',
-        status: 'duplicate',
+        entryMethod: "rfid",
+        status: "duplicate",
       });
 
       // Try to reuse an existing token mapped to this RFID
@@ -144,21 +167,30 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
           await redisClient.expire(token, ttlSeconds);
           await redisClient.expire(reverseKey, ttlSeconds);
         } else {
-          token = crypto.randomBytes(20).toString('hex');
-          await redisClient.set(token, validation.user.rfidTag || '', 'EX', ttlSeconds);
-          await redisClient.set(reverseKey, token, 'EX', ttlSeconds);
+          token = crypto.randomBytes(20).toString("hex");
+          await redisClient.set(
+            token,
+            validation.user.rfidTag || "",
+            "EX",
+            ttlSeconds
+          );
+          await redisClient.set(reverseKey, token, "EX", ttlSeconds);
         }
       } catch (redisErr) {
-        console.error('Redis error (duplicate):', redisErr);
+        console.error("Redis error (duplicate):", redisErr);
       }
 
-      const frontendBase = process.env.FRONTEND_FORM_URL || 'http://localhost:5173';
-      const formUrl = `${frontendBase.replace(/\/$/, '')}/entry-form?token=${token}`;
+      const frontendBase =
+        process.env.FRONTEND_FORM_URL || "http://localhost:5173";
+      const formUrl = `${frontendBase.replace(
+        /\/$/,
+        ""
+      )}/entry-form?token=${token}`;
 
       res.status(409).json({
         success: false,
-        message: 'Duplicate entry detected',
-        status: 'duplicate',
+        message: "Duplicate entry detected",
+        status: "duplicate",
         data: {
           user: {
             idNumber: validation.user.idNumber,
@@ -168,7 +200,7 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
             department: validation.user.department,
           },
           lastEntry: validation.lastEntry,
-          waitTime: validation.lastEntry 
+          waitTime: validation.lastEntry
             ? Math.ceil((Date.now() - validation.lastEntry.getTime()) / 1000)
             : null,
           token,
@@ -190,28 +222,43 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
           await redisClient.expire(token, ttlSeconds);
           await redisClient.expire(reverseKey, ttlSeconds);
         } else {
-          token = crypto.randomBytes(20).toString('hex');
-          await redisClient.set(token, validation.user.rfidTag || '', 'EX', ttlSeconds);
-          await redisClient.set(reverseKey, token, 'EX', ttlSeconds);
+          token = crypto.randomBytes(20).toString("hex");
+          await redisClient.set(
+            token,
+            validation.user.rfidTag || "",
+            "EX",
+            ttlSeconds
+          );
+          await redisClient.set(reverseKey, token, "EX", ttlSeconds);
         }
       } catch (redisErr) {
-        console.error('Redis set error (success):', redisErr);
+        console.error("Redis set error (success):", redisErr);
       }
 
       // still record the entry in the log as before
       const entry = await EntryLog.create({
         userId: validation.user.userId,
         entryTimestamp: new Date(),
-        entryMethod: 'rfid',
-        status: 'success',
+        entryMethod: "rfid",
+        status: "success",
       });
 
-      const frontendBase = process.env.FRONTEND_FORM_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
-      const formUrl = `${frontendBase.replace(/\/$/, '')}/entry-form?token=${token}`;
+      logger.info(
+        `Successful RFID entry recorded for user ${validation.user.idNumber} (${validation.user.fullName}) with RFID: ${rfidTag}`
+      );
+
+      const frontendBase =
+        process.env.FRONTEND_FORM_URL ||
+        process.env.CORS_ORIGIN ||
+        "http://localhost:3000";
+      const formUrl = `${frontendBase.replace(
+        /\/$/,
+        ""
+      )}/entry-form?token=${token}`;
 
       res.json({
         success: true,
-        message: 'Entry recorded successfully',
+        message: "Entry recorded successfully",
         data: {
           entry: {
             logId: entry.logId,
@@ -232,34 +279,40 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
       });
     }
   } catch (error) {
-    console.error('Scan entry error:', error);
+    logger.error(
+      `Scan entry error for RFID ${req.body.rfidTag || "unknown"}:`,
+      error
+    );
     res.status(500).json({
       success: false,
-      message: 'Failed to process scan',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Failed to process scan",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
 // POST /api/entries/manual - Manual entry
-export const manualEntry = async (req: Request, res: Response): Promise<void> => {
+export const manualEntry = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { idNumber } = req.body;
 
     if (!idNumber) {
       res.status(400).json({
         success: false,
-        message: 'ID number is required',
+        message: "ID number is required",
       });
       return;
     }
 
-    const user = await User.findOne({ where: { idNumber, status: 'active' } });
+    const user = await User.findOne({ where: { idNumber, status: "active" } });
 
     if (!user) {
       res.status(404).json({
         success: false,
-        message: 'User not found or inactive',
+        message: "User not found or inactive",
       });
       return;
     }
@@ -267,13 +320,13 @@ export const manualEntry = async (req: Request, res: Response): Promise<void> =>
     const entry = await EntryLog.create({
       userId: user.userId,
       entryTimestamp: new Date(),
-      entryMethod: 'manual',
-      status: 'success',
+      entryMethod: "manual",
+      status: "success",
     });
 
     res.json({
       success: true,
-      message: 'Manual entry recorded successfully',
+      message: "Manual entry recorded successfully",
       data: {
         entry,
         user: {
@@ -286,17 +339,20 @@ export const manualEntry = async (req: Request, res: Response): Promise<void> =>
       },
     });
   } catch (error) {
-    console.error('Manual entry error:', error);
+    console.error("Manual entry error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to process manual entry',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Failed to process manual entry",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
 // GET /api/users/:id - Get user info
-export const getUserInfo = async (req: Request, res: Response): Promise<void> => {
+export const getUserInfo = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -309,7 +365,7 @@ export const getUserInfo = async (req: Request, res: Response): Promise<void> =>
     if (!user) {
       res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
       return;
     }
@@ -328,29 +384,34 @@ export const getUserInfo = async (req: Request, res: Response): Promise<void> =>
       },
     });
   } catch (error) {
-    console.error('Get user info error:', error);
+    console.error("Get user info error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch user info',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      message: "Failed to fetch user info",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
 // GET /api/entries/form - retrieve user data by temporary token
-export const getUserByToken = async (req: Request, res: Response): Promise<void> => {
+export const getUserByToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const token = (req.query.token as string) || req.params.token;
 
     if (!token) {
-      res.status(400).json({ success: false, message: 'Token is required' });
+      res.status(400).json({ success: false, message: "Token is required" });
       return;
     }
 
     const rfidTag = await redisClient.get(token);
 
     if (!rfidTag) {
-      res.status(404).json({ success: false, message: 'Token not found or expired' });
+      res
+        .status(404)
+        .json({ success: false, message: "Token not found or expired" });
       return;
     }
 
@@ -359,7 +420,7 @@ export const getUserByToken = async (req: Request, res: Response): Promise<void>
     if (!user) {
       res.json({
         success: true,
-        message: 'No user found for this RFID. Proceed to signup.',
+        message: "No user found for this RFID. Proceed to signup.",
         data: { rfidTag },
       });
       return;
@@ -381,13 +442,20 @@ export const getUserByToken = async (req: Request, res: Response): Promise<void>
       },
     });
   } catch (error) {
-    console.error('Get user by token error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch user by token', error: error instanceof Error ? error.message : 'Unknown error' });
+    console.error("Get user by token error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user by token",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 };
 
 // POST /api/users/upsert - create or update user (sign up or edit). If `token` provided, associates RFID from token.
-export const upsertUser = async (req: Request, res: Response): Promise<void> => {
+export const upsertUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const {
       token,
@@ -408,19 +476,26 @@ export const upsertUser = async (req: Request, res: Response): Promise<void> => 
     if (token) {
       const mapped = await redisClient.get(token);
       if (!mapped) {
-        res.status(400).json({ success: false, message: 'Invalid or expired token' });
+        res
+          .status(400)
+          .json({ success: false, message: "Invalid or expired token" });
         return;
       }
       // If rfidTag was provided in body, ensure it matches token mapping
       if (rfidTag && rfidTag !== mapped) {
-        res.status(400).json({ success: false, message: 'Provided RFID does not match token' });
+        res.status(400).json({
+          success: false,
+          message: "Provided RFID does not match token",
+        });
         return;
       }
       rfidTag = mapped;
     }
 
     if (!rfidTag) {
-      res.status(400).json({ success: false, message: 'RFID tag is required via token' });
+      res
+        .status(400)
+        .json({ success: false, message: "RFID tag is required via token" });
       return;
     }
 
@@ -450,8 +525,18 @@ export const upsertUser = async (req: Request, res: Response): Promise<void> => 
       user = existing;
     } else {
       // validate required fields for creation
-      if (!idNumber || !firstName || !lastName || !userType || !college || !department) {
-        res.status(400).json({ success: false, message: 'Missing required fields for user creation' });
+      if (
+        !idNumber ||
+        !firstName ||
+        !lastName ||
+        !userType ||
+        !college ||
+        !department
+      ) {
+        res.status(400).json({
+          success: false,
+          message: "Missing required fields for user creation",
+        });
         return;
       }
 
@@ -465,7 +550,7 @@ export const upsertUser = async (req: Request, res: Response): Promise<void> => 
         college,
         department,
         yearLevel: yearLevel || null,
-        status: status || 'active',
+        status: status || "active",
       });
     }
 
@@ -476,7 +561,7 @@ export const upsertUser = async (req: Request, res: Response): Promise<void> => 
         await redisClient.del(token);
         await redisClient.del(reverseKey);
       } catch (redisErr) {
-        console.error('Redis delete error (upsert):', redisErr);
+        console.error("Redis delete error (upsert):", redisErr);
       }
     }
 
@@ -485,16 +570,29 @@ export const upsertUser = async (req: Request, res: Response): Promise<void> => 
       await EntryLog.create({
         userId: user.userId,
         entryTimestamp: new Date(),
-        entryMethod: 'rfid',
-        status: 'success',
+        entryMethod: "rfid",
+        status: "success",
       });
     } catch (elogErr) {
-      console.error('EntryLog create error (upsert):', elogErr);
+      console.error("EntryLog create error (upsert):", elogErr);
     }
 
-    res.json({ success: true, message: 'User upserted successfully', data: { idNumber: user.idNumber, rfidTag: user.rfidTag, fullName: user.fullName, userId: user.userId } });
+    res.json({
+      success: true,
+      message: "User upserted successfully",
+      data: {
+        idNumber: user.idNumber,
+        rfidTag: user.rfidTag,
+        fullName: user.fullName,
+        userId: user.userId,
+      },
+    });
   } catch (error) {
-    console.error('Upsert user error:', error);
-    res.status(500).json({ success: false, message: 'Failed to upsert user', error: error instanceof Error ? error.message : 'Unknown error' });
+    console.error("Upsert user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upsert user",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 };
