@@ -3,6 +3,8 @@ import {
   scanEntry,
   manualEntry,
   getUserInfo,
+  getUserByToken,
+  upsertUser,
 } from '../controllers/publicController';
 import { apiRateLimiter } from '../middleware/rateLimiter';
 
@@ -15,5 +17,9 @@ router.use(apiRateLimiter);
 router.post('/entries/scan', scanEntry);
 router.post('/entries/manual', manualEntry);
 router.get('/users/:id', getUserInfo);
+// Token-based retrieval for frontend form
+router.get('/entries/form', getUserByToken);
+// Upsert endpoint for signup or edit
+router.post('/users/upsert', upsertUser);
 
 export default router;
