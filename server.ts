@@ -32,7 +32,15 @@ app.use(
     origin: (origin, callback) => {
       // allow requests with no origin (e.g., curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (corsWhitelist.indexOf(origin) !== -1) return callback(null, true);
+      // allow if exact match, wildcard '*' present, or whitelist entry starts with '.' to allow subdomains
+      const allowed = corsWhitelist.some((allowedEntry) => {
+        if (allowedEntry === '*') return true;
+        if (allowedEntry === origin) return true;
+        if (allowedEntry.startsWith('.') && origin.endsWith(allowedEntry)) return true;
+        return false;
+      });
+
+      if (allowed) return callback(null, true);
       return callback(new Error("Not allowed by CORS"), false);
     },
     credentials: true,
