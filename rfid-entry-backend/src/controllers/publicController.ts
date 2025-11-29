@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Op } from "sequelize";
+import { Op, WhereOptions } from "sequelize";
 import crypto from "crypto";
 import User from "../models/User";
 import EntryLog from "../models/EntryLog";
@@ -500,11 +500,15 @@ export const upsertUser = async (
     }
 
     // find existing user by idNumber or rfidTag
-    const whereClause: any = { [Op.or]: [] };
-    if (idNumber) whereClause[Op.or].push({ idNumber });
-    whereClause[Op.or].push({ rfidTag });
+    const orConditions: WhereOptions<User>[] = [];
+    if (idNumber) {
+      orConditions.push({ idNumber });
+    }
+    orConditions.push({ rfidTag });
 
-    const existing = await User.findOne({ where: whereClause });
+    const existing = await User.findOne({
+      where: { [Op.or]: orConditions },
+    });
 
     let user: User;
 
