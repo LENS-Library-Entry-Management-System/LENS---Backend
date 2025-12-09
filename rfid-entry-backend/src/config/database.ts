@@ -1,9 +1,13 @@
-import { Sequelize } from 'sequelize';
+import { Sequelize, Options } from 'sequelize';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const sequelize = new Sequelize({
+const useSsl =
+  process.env.DB_SSL === 'true' ||
+  (process.env.DB_HOST ? process.env.DB_HOST.includes('neon') : false);
+
+const sequelizeConfig: Options = {
   dialect: 'postgres',
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
@@ -21,7 +25,22 @@ const sequelize = new Sequelize({
     timestamps: true,
     underscored: false,
   },
-});
+};
+
+if (useSsl) {
+  // Neon and some managed Postgres require SSL. `rejectUnauthorized: false` is
+  // commonly used for hosted services that provide TLS but not a CA chain
+  // trusted by the host environment. Make this configurable via `DB_SSL=true`.
+  sequelizeConfig.dialectOptions = {
+    ...(sequelizeConfig.dialectOptions as object),
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  };
+}
+
+const sequelize = new Sequelize(sequelizeConfig);
 
 // Test database connection
 export const testConnection = async (): Promise<void> => {
