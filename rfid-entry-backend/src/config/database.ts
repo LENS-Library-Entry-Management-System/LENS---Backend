@@ -37,7 +37,7 @@ if (useSsl) {
       require: true,
       rejectUnauthorized: false,
     },
-  } as any;
+  };
 }
 
 const sequelize = new Sequelize(sequelizeConfig);
