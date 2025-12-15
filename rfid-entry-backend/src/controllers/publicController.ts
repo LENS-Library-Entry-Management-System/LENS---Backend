@@ -3,7 +3,7 @@ import { Op, WhereOptions } from "sequelize";
 import crypto from "crypto";
 import User from "../models/User";
 import EntryLog from "../models/EntryLog";
-import redisClient from "../config/redis";
+import redis from "../config/redis";
 import logger from "../utils/logger";
 
 // Validate RFID and check duplicates. Distinguish not-found vs inactive so
@@ -96,14 +96,14 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
         const reverseKey = `rfid:${rfidTag}`;
         let token: string | null = null;
         try {
-          token = await redisClient.get(reverseKey);
+          token = await redis.get(reverseKey);
           if (token) {
-            await redisClient.expire(token, ttlSeconds);
-            await redisClient.expire(reverseKey, ttlSeconds);
+            await redis.expire(token, ttlSeconds);
+            await redis.expire(reverseKey, ttlSeconds);
           } else {
             token = crypto.randomBytes(20).toString("hex");
-            await redisClient.set(token, rfidTag || "", "EX", ttlSeconds);
-            await redisClient.set(reverseKey, token, "EX", ttlSeconds);
+            await redis.set(token, rfidTag || "", "EX", ttlSeconds);
+            await redis.set(reverseKey, token, "EX", ttlSeconds);
           }
         } catch (redisErr) {
           console.error("Redis set error (notFound):", redisErr);
@@ -161,20 +161,20 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
       let token: string | null = null;
 
       try {
-        token = await redisClient.get(reverseKey);
+        token = await redis.get(reverseKey);
         if (token) {
           // refresh both keys' TTL
-          await redisClient.expire(token, ttlSeconds);
-          await redisClient.expire(reverseKey, ttlSeconds);
+          await redis.expire(token, ttlSeconds);
+          await redis.expire(reverseKey, ttlSeconds);
         } else {
           token = crypto.randomBytes(20).toString("hex");
-          await redisClient.set(
+          await redis.set(
             token,
             validation.user.rfidTag || "",
             "EX",
             ttlSeconds
           );
-          await redisClient.set(reverseKey, token, "EX", ttlSeconds);
+          await redis.set(reverseKey, token, "EX", ttlSeconds);
         }
       } catch (redisErr) {
         console.error("Redis error (duplicate):", redisErr);
@@ -217,19 +217,19 @@ export const scanEntry = async (req: Request, res: Response): Promise<void> => {
       let token: string | null = null;
       try {
         // if a token already exists for this RFID, reuse it and refresh TTL
-        token = await redisClient.get(reverseKey);
+        token = await redis.get(reverseKey);
         if (token) {
-          await redisClient.expire(token, ttlSeconds);
-          await redisClient.expire(reverseKey, ttlSeconds);
+          await redis.expire(token, ttlSeconds);
+          await redis.expire(reverseKey, ttlSeconds);
         } else {
           token = crypto.randomBytes(20).toString("hex");
-          await redisClient.set(
+          await redis.set(
             token,
             validation.user.rfidTag || "",
             "EX",
             ttlSeconds
           );
-          await redisClient.set(reverseKey, token, "EX", ttlSeconds);
+          await redis.set(reverseKey, token, "EX", ttlSeconds);
         }
       } catch (redisErr) {
         console.error("Redis set error (success):", redisErr);
@@ -406,7 +406,7 @@ export const getUserByToken = async (
       return;
     }
 
-    const rfidTag = await redisClient.get(token);
+    const rfidTag = await redis.get(token);
 
     if (!rfidTag) {
       res
@@ -474,7 +474,7 @@ export const upsertUser = async (
     let rfidTag = providedRfid;
 
     if (token) {
-      const mapped = await redisClient.get(token);
+      const mapped = await redis.get(token);
       if (!mapped) {
         res
           .status(400)
@@ -567,8 +567,8 @@ export const upsertUser = async (
     if (token) {
       try {
         const reverseKey = `rfid:${rfidTag}`;
-        await redisClient.del(token);
-        await redisClient.del(reverseKey);
+        await redis.del(token);
+        await redis.del(reverseKey);
       } catch (redisErr) {
         console.error("Redis delete error (upsert):", redisErr);
       }
