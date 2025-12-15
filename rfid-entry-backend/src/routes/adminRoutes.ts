@@ -7,12 +7,15 @@ import {
   deleteAdmin,
 } from '../controllers/adminController';
 import { authenticate, authorize } from '../middleware/auth';
+import { csrfProtection, csrfTokenProvider } from '../middleware/csrf';
 import { validateCreateAdmin, validateUpdateAdmin } from '../middleware/adminValidator';
 
 const router = Router();
 
 // All admin routes require authentication
 router.use(authenticate);
+router.use(csrfTokenProvider);
+router.use(csrfProtection);
 
 // All admin management routes require super_admin role
 router.use(authorize('super_admin'));
