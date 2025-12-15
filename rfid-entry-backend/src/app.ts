@@ -7,7 +7,6 @@ import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import { apiRateLimiter } from "./middleware/rateLimiter";
 import { sanitizeInput, limitRequestSize } from "./middleware/sanitizer";
-import { csrfProtection, csrfTokenProvider } from "./middleware/csrf";
 import publicRoutes from "./routes/publicRoutes";
 import reportRoutes from "./routes/reportRoutes";
 import auditRoutes from "./routes/auditRoutes";
@@ -91,16 +90,16 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// CSRF token provider for authenticated routes
-app.use("/api", csrfTokenProvider);
+// CSRF token provider is now handled within authenticated routes
+// app.use("/api", csrfTokenProvider);
 
-// API Routes with rate limiting and CSRF protection
+// API Routes with rate limiting
 import analyticsRoutes from "./routes/analyticsRoutes";
 import authRoutes from "./routes/authRoutes";
 import entryRoutes from "./routes/entryRoutes";
 import userRoutes from "./routes/userRoutes";
 
-app.use("/api", apiRateLimiter, csrfProtection, analyticsRoutes);
+app.use("/api", apiRateLimiter, analyticsRoutes);
 app.use("/api/auth", authRoutes);
 
 // Public routes must be mounted before protected entry routes to allow /entries/scan
@@ -108,13 +107,13 @@ app.use("/api", publicRoutes);
 
 // Mount authenticated user routes before public routes so '/api/users/search' is handled
 // by the protected `userRoutes` instead of the public `/users/:id` handler.
-app.use("/api/users", csrfProtection, userRoutes);
+app.use("/api/users", userRoutes);
 
-app.use("/api/entries", csrfProtection, entryRoutes);
-app.use("/api/reports", csrfProtection, reportRoutes);
-app.use("/api/audit-logs", csrfProtection, auditRoutes);
-app.use("/api/admins", csrfProtection, adminRoutes);
-app.use("/api/system", csrfProtection, systemRoutes);
+app.use("/api/entries", entryRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/audit-logs", auditRoutes);
+app.use("/api/admins", adminRoutes);
+app.use("/api/system", systemRoutes);
 
 // Error handling
 app.use(errorHandler);
