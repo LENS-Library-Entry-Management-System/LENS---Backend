@@ -3,7 +3,7 @@ import { Op, WhereOptions } from "sequelize";
 import crypto from "crypto";
 import User from "../models/User";
 import EntryLog from "../models/EntryLog";
-import redisClient from "../config/redisClient";
+import redisClient from "../config/redis";
 import logger from "../utils/logger";
 
 // Validate RFID and check duplicates. Distinguish not-found vs inactive so

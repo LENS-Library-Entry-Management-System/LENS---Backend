@@ -3,18 +3,24 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const redis = new Redis({
-  host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT || "6379"),
-  password: process.env.REDIS_PASSWORD || "changeme",
-  retryStrategy: (times) => {
+const redisOptions = {
+  retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: true,
-});
+};
+
+const redis = process.env.REDIS_URL
+  ? new Redis(process.env.REDIS_URL, redisOptions)
+  : new Redis({
+      host: process.env.REDIS_HOST || "localhost",
+      port: parseInt(process.env.REDIS_PORT || "6379"),
+      password: process.env.REDIS_PASSWORD || "changeme",
+      ...redisOptions,
+    });
 
 let isHealthy = false;
 

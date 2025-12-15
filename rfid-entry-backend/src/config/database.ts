@@ -21,6 +21,12 @@ const sequelize = new Sequelize({
     timestamps: true,
     underscored: false,
   },
+  dialectOptions: process.env.DB_SSL === 'true' ? {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false
+    }
+  } : {},
 });
 
 // Test database connection

@@ -9,6 +9,7 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'lens_system',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
 const createTables = async () => {
@@ -110,4 +111,7 @@ const createTables = async () => {
 
 createTables()
   .then(() => process.exit(0))
-  .catch(() => process.exit(1));
+  .catch((err) => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
