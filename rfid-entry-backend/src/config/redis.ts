@@ -10,7 +10,6 @@ const redisOptions = {
   },
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
-  lazyConnect: true,
 };
 
 const redis = process.env.REDIS_URL
@@ -41,7 +40,6 @@ redis.on("close", () => {
 
 export const testRedisConnection = async (): Promise<void> => {
   try {
-    await redis.connect();
     await redis.ping();
     console.log("Redis connection test successful.");
   } catch (error) {
