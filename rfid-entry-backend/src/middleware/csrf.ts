@@ -1,35 +1,38 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { redis } from '../config/redis';
 
-// Simple CSRF protection middleware
-const csrfTokens = new Map<string, { token: string; expires: number }>();
+const CSRF_TTL = 60 * 60; // 1 hour in seconds
 
 // Generate CSRF token
-export const generateCSRFToken = (sessionId: string): string => {
-  const token = crypto.randomBytes(32).toString('hex');
-  const expires = Date.now() + (60 * 60 * 1000); // 1 hour
+export const generateCSRFToken = async (sessionId: string): Promise<string> => {
+  const key = `csrf:${sessionId}`;
+  const existingToken = await redis.get(key);
 
-  csrfTokens.set(sessionId, { token, expires });
+  if (existingToken) {
+    // Extend TTL
+    await redis.expire(key, CSRF_TTL);
+    return existingToken;
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  await redis.set(key, token, 'EX', CSRF_TTL);
   return token;
 };
 
 // Validate CSRF token
-export const validateCSRFToken = (sessionId: string, token: string): boolean => {
-  const stored = csrfTokens.get(sessionId);
-
-  if (!stored) return false;
-
-  // Check if token is expired
-  if (Date.now() > stored.expires) {
-    csrfTokens.delete(sessionId);
-    return false;
-  }
-
-  return stored.token === token;
+export const validateCSRFToken = async (sessionId: string, token: string): Promise<boolean> => {
+  const storedToken = await redis.get(`csrf:${sessionId}`);
+  return storedToken === token;
 };
 
 // CSRF protection middleware for admin routes
-export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+export const csrfProtection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Check if CSRF is enabled
+  if (process.env.ENABLE_CSRF !== 'true') {
+    return next();
+  }
+
   // Skip CSRF for GET, HEAD, OPTIONS
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next();
@@ -54,10 +57,21 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     const token = req.headers['x-csrf-token'] as string;
     const sessionId = req.admin?.adminId?.toString() || req.ip || 'anonymous';
 
-    if (!token || !validateCSRFToken(sessionId, token)) {
+    if (!token) {
+      console.warn(`[CSRF] Missing token. SessionId: ${sessionId}, Path: ${path}, Method: ${req.method}`);
       res.status(403).json({
         success: false,
-        message: 'Invalid or missing CSRF token',
+        message: 'Missing CSRF token',
+      });
+      return;
+    }
+
+    const isValid = await validateCSRFToken(sessionId, token);
+    if (!isValid) {
+      console.warn(`[CSRF] Invalid token. SessionId: ${sessionId}, Token: ${token}, Path: ${path}`);
+      res.status(403).json({
+        success: false,
+        message: 'Invalid or expired CSRF token',
       });
       return;
     }
@@ -67,11 +81,20 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
 };
 
 // Middleware to provide CSRF token to client
-export const csrfTokenProvider = (req: Request, res: Response, next: NextFunction): void => {
+export const csrfTokenProvider = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // Check if CSRF is enabled
+  if (process.env.ENABLE_CSRF !== 'true') {
+    return next();
+  }
+
   if (req.admin) {
-    const sessionId = req.admin.adminId.toString();
-    const token = generateCSRFToken(sessionId);
-    res.setHeader('X-CSRF-Token', token);
+    try {
+      const sessionId = req.admin.adminId.toString();
+      const token = await generateCSRFToken(sessionId);
+      res.setHeader('X-CSRF-Token', token);
+    } catch (error) {
+      console.error('Error generating CSRF token:', error);
+    }
   }
   next();
 };

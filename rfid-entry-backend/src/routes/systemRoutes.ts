@@ -8,6 +8,7 @@ import {
   getSystemLogs,
 } from '../controllers/systemController';
 import { authenticate, authorize } from '../middleware/auth';
+import { csrfProtection, csrfTokenProvider } from '../middleware/csrf';
 
 const router = Router();
 
@@ -16,6 +17,8 @@ router.get('/health', getSystemHealth);
 
 // All other system routes require super_admin authentication
 router.use(authenticate);
+router.use(csrfTokenProvider);
+router.use(csrfProtection);
 router.use(authorize('super_admin'));
 
 // Backup & Restore

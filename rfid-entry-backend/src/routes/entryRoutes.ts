@@ -9,11 +9,14 @@ import {
   exportEntries,
 } from '../controllers/entryController';
 import { authenticate } from '../middleware/auth';
+import { csrfProtection, csrfTokenProvider } from '../middleware/csrf';
 
 const router = Router();
 
 // All entry routes require authentication
 router.use(authenticate);
+router.use(csrfTokenProvider);
+router.use(csrfProtection);
 
 // Real-time monitoring (must be before /:id to avoid conflict)
 router.get('/active', getActiveEntries);
