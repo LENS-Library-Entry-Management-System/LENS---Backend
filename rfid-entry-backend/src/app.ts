@@ -30,18 +30,35 @@ app.use(
   })
 );
 
-// // Support multiple origins via comma-separated `CORS_ORIGIN` env var
-// const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:3000";
-// const corsWhitelist = corsOriginEnv
-//   .split(",")
-//   .map((s) => s.trim().replace(/\/$/, "")) // Remove trailing slash from whitelist entries
-//   .filter(Boolean);
+// Support multiple origins via comma-separated `CORS_ORIGIN` env var
+const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:3000";
+const corsWhitelist = corsOriginEnv
+  .split(",")
+  .map((s) => s.trim().replace(/\/$/, "")) // Remove trailing slash from whitelist entries
+  .filter(Boolean);
 
 app.use(
   cors({
-    origin: true, // Temporarily allow all origins
+    origin: (origin, callback) => {
+      // allow requests with no origin (e.g., curl, server-to-server)
+      if (!origin) return callback(null, true);
+      
+      // allow if exact match, wildcard '*' present, or whitelist entry starts with '.' to allow subdomains
+      const allowed = corsWhitelist.some((allowedEntry) => {
+        if (allowedEntry === '*') return true;
+        if (allowedEntry === origin) return true;
+        if (allowedEntry.startsWith('.') && origin.endsWith(allowedEntry)) return true;
+        return false;
+      });
+
+      if (allowed) return callback(null, true);
+      
+      console.warn(`CORS blocked origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
     optionsSuccessStatus: 200,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-vercel-protection-bypass', 'x-csrf-token'],
   })
 );
 
