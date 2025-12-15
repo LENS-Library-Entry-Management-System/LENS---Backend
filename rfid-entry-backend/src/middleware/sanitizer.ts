@@ -2,14 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 
 // Middleware to sanitize user inputs
 export const sanitizeInput = (req: Request, _res: Response, next: NextFunction): void => {
-  const sanitizeObject = (obj: any) => {
+  const sanitizeObject = (obj: Record<string, unknown>) => {
     if (!obj) return;
     for (const key in obj) {
-      if (typeof obj[key] === 'string') {
+      const value = obj[key];
+      if (typeof value === 'string') {
         // req.sanitize is added by express-sanitizer middleware
-        obj[key] = req.sanitize(obj[key]);
-      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-        sanitizeObject(obj[key]);
+        obj[key] = req.sanitize(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitizeObject(value as Record<string, unknown>);
       }
     }
   };

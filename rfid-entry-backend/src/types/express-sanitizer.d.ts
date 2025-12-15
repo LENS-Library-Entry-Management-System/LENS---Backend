@@ -1,6 +1,6 @@
 declare module 'express-sanitizer' {
     import express = require('express');
-    function expressSanitizer(options?: any): express.RequestHandler;
+    function expressSanitizer(options?: Record<string, unknown>): express.RequestHandler;
     export = expressSanitizer;
 }
 
