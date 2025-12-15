@@ -529,13 +529,18 @@ export const upsertUser = async (
       user = existing;
     } else {
       // validate required fields for creation
+      const isFaculty = userType === 'faculty';
       if (
         !idNumber ||
         !firstName ||
         !lastName ||
         !userType ||
-        !college ||
-        !department
+        (isFaculty
+          ? college === undefined ||
+            college === null ||
+            department === undefined ||
+            department === null
+          : !college || !department)
       ) {
         res.status(400).json({
           success: false,

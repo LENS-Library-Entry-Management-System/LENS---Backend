@@ -13,14 +13,11 @@ router.get('/analytics/health', (_req, res) => {
   });
 });
 
-// Apply authentication middleware to all protected analytics routes
-router.use(authenticate);
-
 // Dashboard & Analytics Routes
-router.get('/dashboard/stats', AnalyticsController.getDashboardStats);
-router.get('/analytics/peak-hours', AnalyticsController.getPeakHours);
-router.get('/analytics/trends', AnalyticsController.getTrends);
-router.get('/analytics/by-college', AnalyticsController.getByCollege);
-router.get('/analytics/by-department', AnalyticsController.getByDepartment);
+router.get('/dashboard/stats', authenticate, AnalyticsController.getDashboardStats);
+router.get('/analytics/peak-hours', authenticate, AnalyticsController.getPeakHours);
+router.get('/analytics/trends', authenticate, AnalyticsController.getTrends);
+router.get('/analytics/by-college', authenticate, AnalyticsController.getByCollege);
+router.get('/analytics/by-department', authenticate, AnalyticsController.getByDepartment);
 
 export default router;

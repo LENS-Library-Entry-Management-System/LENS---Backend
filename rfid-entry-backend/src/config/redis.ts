@@ -3,12 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const redisUrl = process.env.REDIS_URL;
-const enableTls =
-  process.env.REDIS_TLS === "true" ||
-  (redisUrl ? redisUrl.startsWith("rediss://") : false);
-
-const baseOptions = {
+const redisOptions = {
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
@@ -16,16 +11,15 @@ const baseOptions = {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: true,
-  tls: enableTls ? {} : undefined,
 };
 
-const redis = redisUrl
-  ? new Redis(redisUrl, baseOptions)
+const redis = process.env.REDIS_URL
+  ? new Redis(process.env.REDIS_URL, redisOptions)
   : new Redis({
       host: process.env.REDIS_HOST || "localhost",
       port: parseInt(process.env.REDIS_PORT || "6379"),
-      password: process.env.REDIS_PASSWORD || "admin",
-      ...baseOptions,
+      password: process.env.REDIS_PASSWORD || "changeme",
+      ...redisOptions,
     });
 
 let isHealthy = false;

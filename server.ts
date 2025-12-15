@@ -1,114 +1,15 @@
 import express from "express";
 import dotenv from "dotenv";
-import cors from "cors";
+import app from "./rfid-entry-backend/src/app";
+
+// Ensure express is imported for deployment detection
+console.log(`Initializing ${express.name} server...`);
 import { testConnection } from "./rfid-entry-backend/src/config/database";
-// import { syncDatabase } from './rfid-entry-backend/src/config/syncDatabase';
 import { testRedisConnection } from "./rfid-entry-backend/src/config/redis";
-import authRoutes from "./rfid-entry-backend/src/routes/authRoutes";
-import EntryRoutes from "./rfid-entry-backend/src/routes/entryRoutes";
-import publicRoutes from "./rfid-entry-backend/src/routes/publicRoutes";
-import userRoutes from "./rfid-entry-backend/src/routes/userRoutes";
-import analyticsRoutes from "./rfid-entry-backend/src/routes/analyticsRoutes";
-import auditRoutes from "./rfid-entry-backend/src/routes/auditRoutes";
-import reportRoutes from "./rfid-entry-backend/src/routes/reportRoutes";
-import adminRoutes from "./rfid-entry-backend/src/routes/adminRoutes";
-import systemRoutes from "./rfid-entry-backend/src/routes/systemRoutes";
 
 dotenv.config();
 
-const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Middleware
-// Support multiple origins via comma-separated `CORS_ORIGIN` env var
-const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:3000";
-const corsWhitelist = corsOriginEnv
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // allow requests with no origin (e.g., curl, server-to-server)
-      if (!origin) return callback(null, true);
-      // allow if exact match, wildcard '*' present, or whitelist entry starts with '.' to allow subdomains
-      const allowed = corsWhitelist.some((allowedEntry) => {
-        if (allowedEntry === '*') return true;
-        if (allowedEntry === origin) return true;
-        if (allowedEntry.startsWith('.') && origin.endsWith(allowedEntry)) return true;
-        return false;
-      });
-
-      if (allowed) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"), false);
-    },
-    credentials: true,
-  })
-);
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request logging middleware
-app.use((req, _res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// Public routes (no auth required) - mount first to avoid conflicts with authenticated routes
-app.use("/api", publicRoutes);
-
-// Routes (authenticated routes after public ones)
-app.use("/api/auth", authRoutes);
-app.use("/api/entries", EntryRoutes);
-app.use("/api/users", userRoutes);
-
-// Analytics routes (dashboard + analytics endpoints)
-app.use("/api", analyticsRoutes);
-app.use("/api/audit-logs", auditRoutes);
-app.use("/api/reports", reportRoutes);
-
-// Admin routes
-app.use("/api/admins", adminRoutes);
-
-// System routes (backup, restore, maintenance)
-app.use("/api/system", systemRoutes);
-
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({
-    status: "OK",
-    message: "LENS Backend is running",
-    database: "PostgreSQL",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// 404 handler
-app.use("*", (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-    path: req.originalUrl,
-  });
-});
-
-// Error handler
-app.use(
-  (
-    err: Error & { status?: number },
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    console.error("Error:", err);
-    res.status(err.status || 500).json({
-      success: false,
-      message: err.message || "Internal server error",
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
-  }
-);
 
 // Start server
 const startServer = async () => {
@@ -127,7 +28,6 @@ const startServer = async () => {
       console.log(`Health: http://localhost:${PORT}/health`);
       console.log(`Auth API: http://localhost:${PORT}/api/auth`);
       console.log(`Reports API: http://localhost:${PORT}/api/reports`);
-      console.log(`Health: http://localhost:${PORT}/health`);
       console.log(`System Health: http://localhost:${PORT}/api/system/health`);
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     });
@@ -139,4 +39,3 @@ const startServer = async () => {
 
 startServer();
 
-export default app;

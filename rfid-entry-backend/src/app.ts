@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import expressSanitizer from "express-sanitizer";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import { apiRateLimiter } from "./middleware/rateLimiter";
@@ -9,6 +10,9 @@ import { sanitizeInput, limitRequestSize } from "./middleware/sanitizer";
 import { csrfProtection, csrfTokenProvider } from "./middleware/csrf";
 import publicRoutes from "./routes/publicRoutes";
 import reportRoutes from "./routes/reportRoutes";
+import auditRoutes from "./routes/auditRoutes";
+import adminRoutes from "./routes/adminRoutes";
+import systemRoutes from "./routes/systemRoutes";
 
 const app = express();
 
@@ -25,9 +29,30 @@ app.use(
     },
   })
 );
+
+// Support multiple origins via comma-separated `CORS_ORIGIN` env var
+const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:3000";
+const corsWhitelist = corsOriginEnv
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // allow requests with no origin (e.g., curl, server-to-server)
+      if (!origin) return callback(null, true);
+      // allow if exact match, wildcard '*' present, or whitelist entry starts with '.' to allow subdomains
+      const allowed = corsWhitelist.some((allowedEntry) => {
+        if (allowedEntry === '*') return true;
+        if (allowedEntry === origin) return true;
+        if (allowedEntry.startsWith('.') && origin.endsWith(allowedEntry)) return true;
+        return false;
+      });
+
+      if (allowed) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
   })
 );
@@ -36,7 +61,16 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
+// Debug logging
+app.use((req, _res, next) => {
+  if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - Body:`, JSON.stringify(req.body));
+  }
+  next();
+});
+
 // Input sanitization
+app.use(expressSanitizer());
 app.use(sanitizeInput);
 app.use(limitRequestSize);
 
@@ -63,12 +97,19 @@ import userRoutes from "./routes/userRoutes";
 
 app.use("/api", apiRateLimiter, csrfProtection, analyticsRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/entries", csrfProtection, entryRoutes);
+
+// Public routes must be mounted before protected entry routes to allow /entries/scan
+app.use("/api", publicRoutes);
+
 // Mount authenticated user routes before public routes so '/api/users/search' is handled
 // by the protected `userRoutes` instead of the public `/users/:id` handler.
 app.use("/api/users", csrfProtection, userRoutes);
-app.use("/api", publicRoutes);
+
+app.use("/api/entries", csrfProtection, entryRoutes);
 app.use("/api/reports", csrfProtection, reportRoutes);
+app.use("/api/audit-logs", csrfProtection, auditRoutes);
+app.use("/api/admins", csrfProtection, adminRoutes);
+app.use("/api/system", csrfProtection, systemRoutes);
 
 // Error handling
 app.use(errorHandler);

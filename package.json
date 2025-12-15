@@ -13,11 +13,13 @@
     "db:create": "ts-node rfid-entry-backend/scripts/createTables.ts",
     "db:create-users": "ts-node rfid-entry-backend/scripts/createUserTables.ts",
     "db:create-system-backup": "ts-node rfid-entry-backend/scripts/createSystemBackupTable.ts",
+    "db:migrate": "ts-node rfid-entry-backend/scripts/runMigrations.ts",
     "db:sync": "ts-node rfid-entry-backend/scripts/syncDatabase.ts",
     "seed:admin": "ts-node rfid-entry-backend/scripts/seedAdmin.ts",
     "seed:users": "ts-node rfid-entry-backend/scripts/seedUsers.ts",
     "seed:all": "npm run seed:admin && npm run seed:users && npm run seed:analytics",
     "seed:analytics": "ts-node rfid-entry-backend/scripts/seedAnalytics.ts",
+    "create:admin": "ts-node rfid-entry-backend/scripts/createAdmin.ts",
     "type-check": "tsc --noEmit",
     "prepare": "husky"
   },
