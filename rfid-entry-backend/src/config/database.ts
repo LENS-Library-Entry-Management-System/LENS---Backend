@@ -1,5 +1,6 @@
 import { Sequelize, Options } from 'sequelize';
 import dotenv from 'dotenv';
+import * as pg from 'pg';
 
 dotenv.config();
 
@@ -9,6 +10,7 @@ const useSsl =
 
 const sequelizeConfig: Options = {
   dialect: 'postgres',
+  dialectModule: pg,
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'lens_system',
