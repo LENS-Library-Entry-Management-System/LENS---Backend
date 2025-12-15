@@ -35,9 +35,20 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
     return next();
   }
 
+  const path = req.originalUrl.split('?')[0];
+
+  // Skip CSRF for public endpoints
+  if (
+    path === '/api/entries/scan' ||
+    path === '/api/entries/manual' ||
+    path === '/api/users/upsert'
+  ) {
+    return next();
+  }
+
   // For admin routes, require CSRF token
-  if (req.path.startsWith('/api/users') || req.path.startsWith('/api/entries') ||
-      req.path.startsWith('/api/admin') || req.path.startsWith('/api/reports')) {
+  if (path.startsWith('/api/users') || path.startsWith('/api/entries') ||
+      path.startsWith('/api/admin') || path.startsWith('/api/reports')) {
 
     const token = req.headers['x-csrf-token'] as string;
     const sessionId = req.admin?.adminId?.toString() || req.ip || 'anonymous';

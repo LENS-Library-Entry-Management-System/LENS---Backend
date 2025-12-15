@@ -16,10 +16,11 @@ router.use(apiRateLimiter);
 // Public endpoints - no authentication required
 router.post('/entries/scan', scanEntry);
 router.post('/entries/manual', manualEntry);
-router.get('/users/:id', getUserInfo);
-// Token-based retrieval for frontend form
-router.get('/entries/form', getUserByToken);
 // Upsert endpoint for signup or edit
 router.post('/users/upsert', upsertUser);
+router.get('/users/:id', getUserInfo);
+
+// Token-based retrieval for frontend form
+router.get('/entries/form', getUserByToken);
 
 export default router;

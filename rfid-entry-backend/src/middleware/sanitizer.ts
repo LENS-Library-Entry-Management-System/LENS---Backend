@@ -1,21 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
 
-import sanitizer from 'express-sanitizer';
-
 // Middleware to sanitize user inputs
 export const sanitizeInput = (req: Request, _res: Response, next: NextFunction): void => {
-  // Sanitize all string inputs
+  const sanitizeObject = (obj: Record<string, unknown>) => {
+    if (!obj) return;
+    for (const key in obj) {
+      const value = obj[key];
+      if (typeof value === 'string') {
+        // req.sanitize is added by express-sanitizer middleware
+        obj[key] = req.sanitize(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitizeObject(value as Record<string, unknown>);
+      }
+    }
+  };
+
   if (req.body) {
-    req.body = sanitizer(req.body);
+    sanitizeObject(req.body);
   }
 
-  if (req.query) {
-    req.query = sanitizer(req.query);
-  }
-
-  if (req.params) {
-    req.params = sanitizer(req.params);
-  }
+  if (req.query) sanitizeObject(req.query);
+  if (req.params) sanitizeObject(req.params);
 
   next();
 };
