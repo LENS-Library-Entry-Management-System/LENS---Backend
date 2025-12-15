@@ -1,5 +1,9 @@
+import express from "express";
 import dotenv from "dotenv";
 import app from "./rfid-entry-backend/src/app";
+
+// Ensure express is imported for deployment detection
+console.log(`Initializing ${express.name} server...`);
 import { testConnection } from "./rfid-entry-backend/src/config/database";
 import { testRedisConnection } from "./rfid-entry-backend/src/config/redis";
 
