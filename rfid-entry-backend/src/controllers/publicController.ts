@@ -535,12 +535,7 @@ export const upsertUser = async (
         !firstName ||
         !lastName ||
         !userType ||
-        (isFaculty
-          ? college === undefined ||
-            college === null ||
-            department === undefined ||
-            department === null
-          : !college || !department)
+        (!isFaculty && (!college || !department))
       ) {
         res.status(400).json({
           success: false,
@@ -556,8 +551,8 @@ export const upsertUser = async (
         lastName,
         email: email || null,
         userType,
-        college,
-        department,
+        college: college || null,
+        department: department || null,
         yearLevel: yearLevel || null,
         status: status || "active",
       });
