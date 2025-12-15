@@ -34,7 +34,7 @@ app.use(
 const corsOriginEnv = process.env.CORS_ORIGIN || "http://localhost:3000";
 const corsWhitelist = corsOriginEnv
   .split(",")
-  .map((s) => s.trim())
+  .map((s) => s.trim().replace(/\/$/, "")) // Remove trailing slash from whitelist entries
   .filter(Boolean);
 
 app.use(
@@ -42,6 +42,7 @@ app.use(
     origin: (origin, callback) => {
       // allow requests with no origin (e.g., curl, server-to-server)
       if (!origin) return callback(null, true);
+      
       // allow if exact match, wildcard '*' present, or whitelist entry starts with '.' to allow subdomains
       const allowed = corsWhitelist.some((allowedEntry) => {
         if (allowedEntry === '*') return true;
@@ -51,9 +52,12 @@ app.use(
       });
 
       if (allowed) return callback(null, true);
+      
+      console.warn(`CORS blocked origin: ${origin}`);
       return callback(new Error("Not allowed by CORS"), false);
     },
     credentials: true,
+    optionsSuccessStatus: 200,
   })
 );
 
