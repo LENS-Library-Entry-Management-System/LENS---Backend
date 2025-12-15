@@ -41,7 +41,8 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   if (
     path === '/api/entries/scan' ||
     path === '/api/entries/manual' ||
-    path === '/api/users/upsert'
+    path === '/api/users/upsert' ||
+    path === '/api/entries/form'
   ) {
     return next();
   }
