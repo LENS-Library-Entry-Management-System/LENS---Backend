@@ -83,11 +83,11 @@ User.init(
     },
     college: {
       type: DataTypes.STRING(100),
-      allowNull: false,
+      allowNull: true,
     },
     department: {
       type: DataTypes.STRING(100),
-      allowNull: false,
+      allowNull: true,
     },
     yearLevel: {
       type: DataTypes.STRING(20),
